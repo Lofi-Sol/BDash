@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Torn Wars Updater - Fixed Python Script
+Torn Wars Updater - Python Script with Discord Notifications
 This script fetches Torn war data and updates Google Sheets directly
 Creates a new sheet every week with date labeling and faction statistics
-Fixed column mismatch and added rate limiting
+Sends Discord notifications on Tuesday updates (no delay for testing)
 """
 
 import os
@@ -251,6 +251,30 @@ class TornWarsUpdater:
             logger.error(f"Failed to access spreadsheet: {e}")
             raise
     
+    def reset_sheet_structure(self, sheet):
+        """Reset the sheet structure to ensure clean data"""
+        try:
+            logger.info("Resetting sheet structure for clean data")
+            
+            # Clear all data except row 1-2 (notes)
+            sheet.clear()
+            
+            # Re-add the notes
+            sheet.update(values=[[f'Sheet created on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC']], range_name='A1')
+            sheet.update(values=[[f'Data represents wars as of {datetime.now(timezone.utc).strftime("%Y-%m-%d")}']], range_name='A2')
+            
+            # Set up headers at row 4
+            self.setup_headers_at_row(sheet, 4)
+            
+            # Ensure correct dimensions
+            sheet.resize(rows=1000, cols=22)
+            
+            logger.info("Sheet structure reset successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to reset sheet structure: {e}")
+            raise
+    
     def setup_headers(self, sheet):
         """Set up the sheet headers and formatting (legacy method)"""
         self.setup_headers_at_row(sheet, 1)
@@ -321,9 +345,6 @@ class TornWarsUpdater:
             # Get faction statistics
             faction1_stats = self.calculate_faction_stats(faction_ids[0])
             faction2_stats = self.calculate_faction_stats(faction_ids[1])
-            
-            logger.info(f"Faction 1 ({faction_ids[0]}): {faction1_stats['wars_won']}W/{faction1_stats['wars_lost']}L ({faction1_stats['win_rate']})")
-            logger.info(f"Faction 2 ({faction_ids[1]}): {faction2_stats['wars_won']}W/{faction2_stats['wars_lost']}L ({faction2_stats['win_rate']})")
             
             # Determine status
             status = 'Preparing'
@@ -411,25 +432,6 @@ class TornWarsUpdater:
             logger.error(f"Failed to update sheet: {e}")
             raise
     
-    def reset_sheet_structure(self, sheet):
-        """Resets the sheet to a clean state, including notes and headers."""
-        try:
-            # Clear all data rows (starting from row 6, after headers)
-            last_row = sheet.row_count
-            if last_row > 5: # Headers are at row 4, data starts at row 5
-                sheet.delete_rows(5, last_row)
-            
-            # Re-add the notes
-            sheet.update(values=[[f'Sheet created on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC']], range_name='A1')
-            sheet.update(values=[[f'Data represents wars as of {datetime.now(timezone.utc).strftime("%Y-%m-%d")}']], range_name='A2')
-            
-            # Set up headers at row 4 (after the notes)
-            self.setup_headers_at_row(sheet, 4)
-            
-        except Exception as e:
-            logger.error(f"Failed to reset sheet structure: {e}")
-            raise
-    
     def cleanup_old_sheets(self, spreadsheet_id, keep_weeks=8):
         """Clean up old weekly sheets, keeping only the most recent ones"""
         try:
@@ -461,7 +463,60 @@ class TornWarsUpdater:
             logger.error(f"Failed to cleanup old sheets: {e}")
             # Don't raise here, as this is not critical for the main functionality
     
-    def run_update(self, spreadsheet_id):
+    def send_discord_notification(self, webhook_url, message):
+        """Send Discord notification immediately (no delay for testing)"""
+        try:
+            logger.info(f"Sending Discord notification: {message[:50]}...")
+            
+            # Discord webhook payload
+            payload = {
+                "content": message,
+                "username": "Torn Wars Bot",
+                "embeds": [{
+                    "title": "⚔️ Torn Wars Data Updated",
+                    "description": message,
+                    "color": 0x00ff00,  # Green color
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "footer": {
+                        "text": "Automated update from Torn Wars Tracker"
+                    },
+                    "thumbnail": {
+                        "url": "https://www.torn.com/images/v2/torn_logo.png"
+                    }
+                }]
+            }
+            
+            # Send to Discord webhook
+            response = requests.post(webhook_url, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            logger.info("Discord notification sent successfully!")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to send Discord notification: {e}")
+            return False
+    
+    def send_weekly_update_notification(self, webhook_url, sheet_name, wars_count, factions_count):
+        """Send weekly update notification to Discord"""
+        try:
+            # Create notification message
+            message = f"�� **Weekly Torn Wars Update Complete!**\n\n"
+            message += f"📊 **Sheet**: {sheet_name}\n"
+            message += f"⚔️ **Wars Processed**: {wars_count}\n"
+            message += f"🏰 **Factions Analyzed**: {factions_count}\n"
+            message += f"⏰ **Updated**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n\n"
+            message += f"📈 **New data available in Google Sheets!**\n"
+            message += f"🔍 Check the latest war statistics and faction performance."
+            
+            # Send notification immediately (for testing)
+            return self.send_discord_notification(webhook_url, message)
+            
+        except Exception as e:
+            logger.error(f"Failed to send weekly update notification: {e}")
+            return False
+    
+    def run_update(self, spreadsheet_id, discord_webhook_url=None):
         """Main function to run the complete update process"""
         try:
             logger.info("Starting Torn Wars update process...")
@@ -477,6 +532,22 @@ class TornWarsUpdater:
             
             # Update sheet
             self.update_sheet(sheet, torn_data)
+            
+            # Get statistics for Discord notification
+            wars_count = len(torn_data.get('rankedwars', {}))
+            unique_factions = set()
+            for war in torn_data.get('rankedwars', {}).values():
+                faction_ids = list(war['factions'].keys())
+                unique_factions.update(faction_ids)
+            factions_count = len(unique_factions)
+            
+            # Send Discord notification on Tuesdays (immediately for testing)
+            if discord_webhook_url and datetime.now(timezone.utc).weekday() == 1:  # Tuesday
+                logger.info("Tuesday update detected - sending Discord notification")
+                sheet_name = sheet.title
+                self.send_weekly_update_notification(discord_webhook_url, sheet_name, wars_count, factions_count)
+            elif discord_webhook_url:
+                logger.info("Not Tuesday - skipping Discord notification")
             
             # Clean up old sheets (optional)
             self.cleanup_old_sheets(spreadsheet_id)
@@ -496,6 +567,7 @@ def main():
     parser.add_argument('--torn-api-key', required=True, help='Torn API key')
     parser.add_argument('--spreadsheet-id', required=True, help='Google Sheets spreadsheet ID')
     parser.add_argument('--google-creds', help='Path to Google service account credentials JSON file')
+    parser.add_argument('--discord-webhook', help='Discord webhook URL for notifications')
     
     args = parser.parse_args()
     
@@ -503,7 +575,7 @@ def main():
     updater = TornWarsUpdater(args.torn_api_key, args.google_creds)
     
     # Run update
-    success = updater.run_update(args.spreadsheet_id)
+    success = updater.run_update(args.spreadsheet_id, args.discord_webhook)
     
     if success:
         print("✅ Update completed successfully!")

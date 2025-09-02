@@ -29,6 +29,7 @@ jobs:
           TORN_API_KEY: ${{ secrets.TORN_API_KEY }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           echo "Starting Torn Wars update using Python script..."
           
@@ -48,10 +49,15 @@ jobs:
             exit 1
           fi
           
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "⚠️  Warning: DISCORD_WEBHOOK_URL secret is not set - Discord notifications will be skipped"
+          fi
+          
           # Run the Python update script
           python Actions/update_torn_wars.py \
             --torn-api-key "$TORN_API_KEY" \
-            --spreadsheet-id "$SPREADSHEET_ID"
+            --spreadsheet-id "$SPREADSHEET_ID" \
+            --discord-webhook "$DISCORD_WEBHOOK_URL"
           
       - name: Log completion
         run: |
