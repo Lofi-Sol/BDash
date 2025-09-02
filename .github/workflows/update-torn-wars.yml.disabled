@@ -1,0 +1,10 @@
+# DISABLED: Webhook workflow - requires GOOGLE_SHEETS_WEBHOOK_URL secret
+# Use the Python workflow instead: update-torn-wars-python.yml
+#
+# This workflow has been disabled because it requires a webhook URL that hasn't been set up.
+# The Python workflow (update-torn-wars-python.yml) is working and will handle all updates.
+#
+# To re-enable this workflow:
+# 1. Remove all comment symbols (#)
+# 2. Set up the GOOGLE_SHEETS_WEBHOOK_URL secret in GitHub
+# 3. Deploy the Google Apps Script webhook
