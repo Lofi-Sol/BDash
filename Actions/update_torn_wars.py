@@ -178,6 +178,30 @@ class TornWarsUpdater:
             try:
                 sheet = spreadsheet.worksheet(sheet_name)
                 logger.info(f"Found existing sheet for this week: {sheet_name}")
+                
+                # Check if headers need updating (in case structure changed)
+                try:
+                    current_headers = sheet.row_values(4)  # Headers are at row 4
+                    expected_headers = [
+                        'War ID', 'Status', 'Start Date', 'End Date', 'Duration',
+                        'Target Score', 'Faction 1 ID', 'Faction 1 Name', 'Faction 1 Score',
+                        'Faction 1 Chain', 'Faction 1 Wars Won', 'Faction 1 Wars Lost', 'Faction 1 Win Rate',
+                        'Faction 2 ID', 'Faction 2 Name', 'Faction 2 Score', 'Faction 2 Chain',
+                        'Faction 2 Wars Won', 'Faction 2 Wars Lost', 'Faction 2 Win Rate',
+                        'Total Score', 'Winner Faction ID'
+                    ]
+                    
+                    if len(current_headers) != len(expected_headers) or current_headers != expected_headers:
+                        logger.info("Headers structure changed, resetting sheet for clean data")
+                        # Reset the entire sheet structure
+                        self.reset_sheet_structure(sheet)
+                    else:
+                        logger.info("Sheet structure is up to date")
+                        
+                except Exception as e:
+                    logger.warning(f"Could not check headers, resetting sheet: {e}")
+                    self.reset_sheet_structure(sheet)
+                
             except gspread.WorksheetNotFound:
                 # Create new sheet for this week
                 sheet = spreadsheet.add_worksheet(
