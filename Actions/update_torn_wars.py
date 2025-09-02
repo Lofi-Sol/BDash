@@ -180,19 +180,32 @@ class TornWarsUpdater:
         """Generate sheet name for the current week"""
         # Get the current date
         now = datetime.now(timezone.utc)
+        # Find the Tuesday of the current week
+        # Monday=0, Tuesday=1, Wednesday=2, Thursday=3, Friday=4, Saturday=5, Sunday=6
+        current_weekday = now.weekday()
         
-        # Find the most recent Tuesday (or current day if it's Tuesday)
-        days_since_tuesday = (now.weekday() - 1) % 7  # Tuesday is 1 (Monday=0)
-        if days_since_tuesday == 0:  # If today is Tuesday
+        if current_weekday == 1:  # Today is Tuesday
+            # Use today's date for the sheet name
             tuesday_date = now
         else:
-            tuesday_date = now - timedelta(days=days_since_tuesday)
+            # Find the Tuesday of the current week
+            # If we're past Tuesday, go to next Tuesday
+            # If we're before Tuesday, go to previous Tuesday
+            if current_weekday > 1:  # Wednesday, Thursday, Friday, Saturday, Sunday
+                # Go to next Tuesday
+                days_until_next_tuesday = (8 - current_weekday) % 7
+                tuesday_date = now + timedelta(days=days_until_next_tuesday)
+            else:  # Monday
+                # Go to previous Tuesday
+                days_since_tuesday = 1
+                tuesday_date = now - timedelta(days=days_since_tuesday)
         
         # Format the date for the sheet name
         date_str = tuesday_date.strftime("%Y-%m-%d")
         sheet_name = f"{SHEET_NAME_PREFIX} - {date_str}"
         
-        logger.info(f"Generated sheet name: {sheet_name}")
+        logger.info(f"Current weekday: {current_weekday} (Monday=0, Tuesday=1, etc.)")
+        logger.info(f"Generated sheet name for week of: {sheet_name}")
         return sheet_name
     
     def get_or_create_weekly_sheet(self, spreadsheet_id):
