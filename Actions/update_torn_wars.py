@@ -212,8 +212,8 @@ class TornWarsUpdater:
                 logger.info(f"Created new sheet for this week: {sheet_name}")
                 
                 # Add a note about when this sheet was created
-                sheet.update(values=[f'Sheet created on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC'], range_name='A1')
-                sheet.update(values=[f'Data represents wars as of {sheet_name.split(" - ")[1]}'], range_name='A2')
+                sheet.update(values=[[f'Sheet created on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC']], range_name='A1')
+                sheet.update(values=[[f'Data represents wars as of {sheet_name.split(" - ")[1]}']], range_name='A2')
                 
                 # Set up headers at row 4 (after the notes)
                 self.setup_headers_at_row(sheet, 4)
@@ -379,6 +379,25 @@ class TornWarsUpdater:
                 
         except Exception as e:
             logger.error(f"Failed to update sheet: {e}")
+            raise
+    
+    def reset_sheet_structure(self, sheet):
+        """Resets the sheet to a clean state, including notes and headers."""
+        try:
+            # Clear all data rows (starting from row 6, after headers)
+            last_row = sheet.row_count
+            if last_row > 5: # Headers are at row 4, data starts at row 5
+                sheet.delete_rows(5, last_row)
+            
+            # Re-add the notes
+            sheet.update(values=[[f'Sheet created on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC']], range_name='A1')
+            sheet.update(values=[[f'Data represents wars as of {datetime.now(timezone.utc).strftime("%Y-%m-%d")}']], range_name='A2')
+            
+            # Set up headers at row 4 (after the notes)
+            self.setup_headers_at_row(sheet, 4)
+            
+        except Exception as e:
+            logger.error(f"Failed to reset sheet structure: {e}")
             raise
     
     def cleanup_old_sheets(self, spreadsheet_id, keep_weeks=8):
