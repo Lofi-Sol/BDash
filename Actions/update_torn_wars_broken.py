@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Torn Wars Updater - Fixed Python Script
+Torn Wars Updater - Enhanced Python Script
 This script fetches Torn war data and updates Google Sheets directly
 Creates a new sheet every week with date labeling and faction statistics
-Fixed column mismatch and added rate limiting
 """
 
 import os
@@ -91,9 +90,6 @@ class TornWarsUpdater:
     def fetch_faction_history(self, faction_id):
         """Fetch faction historical data including recent wars"""
         try:
-            # Add rate limiting to prevent "Too many requests" errors
-            time.sleep(0.2)  # 200ms delay between requests
-            
             url = f"https://api.torn.com/faction/{faction_id}?selections=basic&key={self.torn_api_key}"
             logger.info(f"Fetching faction history for faction {faction_id}")
             
@@ -103,12 +99,8 @@ class TornWarsUpdater:
             data = response.json()
             
             if 'error' in data:
-                if data['error'].get('code') == 5:  # Too many requests
-                    logger.warning(f"Rate limited for faction {faction_id}, using default stats")
-                    return None
-                else:
-                    logger.warning(f"Error fetching faction {faction_id}: {data['error']}")
-                    return None
+                logger.warning(f"Error fetching faction {faction_id}: {data['error']}")
+                return None
             
             return data
             
@@ -183,7 +175,7 @@ class TornWarsUpdater:
                 sheet = spreadsheet.add_worksheet(
                     title=sheet_name,
                     rows=1000,
-                    cols=22  # Exactly 22 columns (A-V)
+                    cols=22  # Increased for new columns
                 )
                 logger.info(f"Created new sheet for this week: {sheet_name}")
                 
@@ -212,7 +204,7 @@ class TornWarsUpdater:
             'Faction 1 Chain', 'Faction 1 Wars Won', 'Faction 1 Wars Lost', 'Faction 1 Win Rate',
             'Faction 2 ID', 'Faction 2 Name', 'Faction 2 Score', 'Faction 2 Chain',
             'Faction 2 Wars Won', 'Faction 2 Wars Lost', 'Faction 2 Win Rate',
-            'Total Score', 'Winner Faction ID'
+            'Total Score', 'Winner Faction ID', 'Last Updated'
         ]
         
         # Set headers at the specified row using the correct syntax
@@ -242,14 +234,6 @@ class TornWarsUpdater:
         """Prepare wars data for the sheet"""
         wars = []
         
-        # Get unique faction IDs to reduce API calls
-        unique_faction_ids = set()
-        for war in wars_data.get('rankedwars', {}).values():
-            faction_ids = list(war['factions'].keys())
-            unique_faction_ids.update(faction_ids)
-        
-        logger.info(f"Processing {len(wars_data.get('rankedwars', {}))} wars with {len(unique_faction_ids)} unique factions")
-        
         for war_id, war in wars_data.get('rankedwars', {}).items():
             start_date = datetime.fromtimestamp(war['war']['start'], tz=timezone.utc)
             end_date = None
@@ -278,31 +262,30 @@ class TornWarsUpdater:
             elif war['war']['end'] < datetime.now().timestamp():
                 status = 'Finished'
             
-            # Create war row with exactly 22 columns (A-V)
             war_row = [
-                war_id,                    # A: War ID
-                status,                    # B: Status
-                start_date.isoformat(),    # C: Start Date
-                end_date.isoformat() if end_date else '',  # D: End Date
-                duration,                  # E: Duration
-                war['war'].get('target', 0),  # F: Target Score
-                faction_ids[0],            # G: Faction 1 ID
-                faction1.get('name', 'Unknown'),  # H: Faction 1 Name
-                faction1_score,            # I: Faction 1 Score
-                faction1.get('chain', 0),  # J: Faction 1 Chain
-                faction1_stats['wars_won'],  # K: Faction 1 Wars Won
-                faction1_stats['wars_lost'], # L: Faction 1 Wars Lost
-                faction1_stats['win_rate'],  # M: Faction 1 Win Rate
-                faction_ids[1],            # N: Faction 2 ID
-                faction2.get('name', 'Unknown'),  # O: Faction 2 Name
-                faction2_score,            # P: Faction 2 Score
-                faction2.get('chain', 0),  # Q: Faction 2 Chain
-                faction2_stats['wars_won'],  # R: Faction 2 Wars Won
-                faction2_stats['wars_lost'], # S: Faction 2 Wars Lost
-                faction2_stats['win_rate'],  # T: Faction 2 Win Rate
-                total_score,               # U: Total Score
-                war['war'].get('winner', '')  # V: Winner Faction ID
-                # Removed: Last Updated (was causing 23rd column)
+                war_id,
+                status,
+                start_date.isoformat(),
+                end_date.isoformat() if end_date else '',
+                duration,
+                war['war'].get('target', 0),
+                faction_ids[0],
+                faction1.get('name', 'Unknown'),
+                faction1_score,
+                faction1.get('chain', 0),
+                faction1_stats['wars_won'],
+                faction1_stats['wars_lost'],
+                faction1_stats['win_rate'],
+                faction_ids[1],
+                faction2.get('name', 'Unknown'),
+                faction2_score,
+                faction2.get('chain', 0),
+                faction2_stats['wars_won'],
+                faction2_stats['wars_lost'],
+                faction2_stats['win_rate'],
+                total_score,
+                war['war'].get('winner', ''),
+                datetime.now(timezone.utc).isoformat()
             ]
             
             wars.append(war_row)
@@ -329,9 +312,9 @@ class TornWarsUpdater:
                 
                 if current_rows < total_rows_needed:
                     logger.info(f"Resizing sheet from {current_rows} to {total_rows_needed} rows")
-                    sheet.resize(rows=total_rows_needed, cols=22)  # Exactly 22 columns
+                    sheet.resize(rows=total_rows_needed, cols=22)  # 22 columns for new structure
                 
-                if current_cols < 22:  # We need exactly 22 columns (A-V)
+                if current_cols < 22:  # We need 22 columns (A-V)
                     logger.info(f"Resizing sheet from {current_cols} to 22 columns")
                     sheet.resize(rows=total_rows_needed, cols=22)
                 
