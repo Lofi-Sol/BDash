@@ -2,8 +2,8 @@ name: Update Torn Wars in Google Sheets (Python)
 
 on:
   schedule:
-    # Run every Tuesday at 12:15 PM UTC
-    - cron: '15 12 * * 2'
+    # Run every 24 hours to keep data fresh
+    - cron: '0 12 * * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
@@ -56,4 +56,4 @@ jobs:
       - name: Log completion
         run: |
           echo "🎯 Torn Wars update workflow completed at $(date -u)"
-          echo "Next scheduled run: Tuesday at 12:15 PM UTC"
+          echo "Next scheduled run: Every 24 hours at 12:00 PM UTC"
