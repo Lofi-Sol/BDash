@@ -94,7 +94,7 @@ class TornWarsUpdater:
             # Add rate limiting to prevent "Too many requests" errors
             time.sleep(0.2)  # 200ms delay between requests
             
-            url = f"https://api.torn.com/faction/{faction_id}?selections=basic&key={self.torn_api_key}"
+            url = f"https://api.torn.com/faction/{faction_id}?selections=rankedwars&key={self.torn_api_key}"
             logger.info(f"Fetching faction history for faction {faction_id}")
             
             response = requests.get(url, timeout=30)
@@ -128,16 +128,43 @@ class TornWarsUpdater:
                     'win_rate': '0%'
                 }
             
-            # Get basic faction info
-            faction_name = faction_data.get('name', 'Unknown')
+            # Get rankedwars data
+            rankedwars = faction_data.get('rankedwars', {})
+            if not rankedwars:
+                return {
+                    'wars_won': 0,
+                    'wars_lost': 0,
+                    'total_wars': 0,
+                    'win_rate': '0%'
+                }
             
-            # For now, we'll use basic stats since detailed war history requires different API calls
-            # In a future enhancement, we could fetch detailed war history
+            # Calculate statistics from war history
+            wars_won = 0
+            wars_lost = 0
+            total_wars = len(rankedwars)
+            
+            for war_id, war_data in rankedwars.items():
+                war_info = war_data.get('war', {})
+                winner_id = war_info.get('winner')
+                
+                # Check if this faction won
+                if winner_id and str(winner_id) == str(faction_id):
+                    wars_won += 1
+                else:
+                    wars_lost += 1
+            
+            # Calculate win rate
+            win_rate = '0%'
+            if total_wars > 0:
+                win_rate = f"{round((wars_won / total_wars) * 100)}%"
+            
+            logger.info(f"Faction {faction_id}: {wars_won} wins, {wars_lost} losses, {total_wars} total wars, {win_rate} win rate")
+            
             return {
-                'wars_won': 0,  # Placeholder - would need war history API
-                'wars_lost': 0,  # Placeholder - would need war history API
-                'total_wars': 0,  # Placeholder - would need war history API
-                'win_rate': '0%'  # Placeholder - would need war history API
+                'wars_won': wars_won,
+                'wars_lost': wars_lost,
+                'total_wars': total_wars,
+                'win_rate': win_rate
             }
             
         except Exception as e:
@@ -294,6 +321,9 @@ class TornWarsUpdater:
             # Get faction statistics
             faction1_stats = self.calculate_faction_stats(faction_ids[0])
             faction2_stats = self.calculate_faction_stats(faction_ids[1])
+            
+            logger.info(f"Faction 1 ({faction_ids[0]}): {faction1_stats['wars_won']}W/{faction1_stats['wars_lost']}L ({faction1_stats['win_rate']})")
+            logger.info(f"Faction 2 ({faction_ids[1]}): {faction2_stats['wars_won']}W/{faction2_stats['wars_lost']}L ({faction2_stats['win_rate']})")
             
             # Determine status
             status = 'Preparing'
