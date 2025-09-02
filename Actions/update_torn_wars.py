@@ -234,19 +234,37 @@ class TornWarsUpdater:
     def update_sheet(self, sheet, wars_data):
         """Update the sheet with wars data"""
         try:
-            # Clear existing data but keep the notes and headers
-            # Find where the data starts (after notes and headers)
-            data_start_row = 5  # Notes in rows 1-2, empty row 3, headers in row 4
-            
-            # Clear data rows (starting from row 6, after headers)
-            last_row = sheet.row_count
-            if last_row > data_start_row:
-                sheet.delete_rows(data_start_row + 1, last_row)
-            
             # Prepare and add new data
             wars = self.prepare_wars_data(wars_data)
             
             if wars:
+                # Calculate how many rows we need
+                # Notes in rows 1-2, empty row 3, headers in row 4, data starts at row 5
+                total_rows_needed = 4 + len(wars)  # 4 rows for notes/headers + data rows
+                
+                # Resize the sheet if needed
+                current_rows = sheet.row_count
+                current_cols = sheet.col_count
+                
+                if current_rows < total_rows_needed:
+                    logger.info(f"Resizing sheet from {current_rows} to {total_rows_needed} rows")
+                    sheet.resize(rows=total_rows_needed, cols=20)
+                
+                if current_cols < 17:  # We need 17 columns (A-Q)
+                    logger.info(f"Resizing sheet from {current_cols} to 17 columns")
+                    sheet.resize(rows=total_rows_needed, cols=17)
+                
+                # Clear existing data but keep the notes and headers
+                # Find where the data starts (after notes and headers)
+                data_start_row = 5  # Notes in rows 1-2, empty row 3, headers in row 4
+                
+                # Clear data rows (starting from row 6, after headers)
+                last_row = sheet.row_count
+                if last_row > data_start_row:
+                    sheet.delete_rows(data_start_row + 1, last_row)
+                    # Resize back to minimum size after clearing
+                    sheet.resize(rows=total_rows_needed, cols=17)
+                
                 # Add data starting after the headers
                 data_range = f'A{data_start_row + 1}:Q{data_start_row + len(wars)}'
                 sheet.update(values=wars, range_name=data_range)
