@@ -249,7 +249,7 @@ class TornWarsUpdater:
             if wars:
                 # Add data starting after the headers
                 data_range = f'A{data_start_row + 1}:Q{data_start_row + len(wars)}'
-                sheet.update(data_range, wars)
+                sheet.update(values=wars, range_name=data_range)
                 logger.info(f"Updated sheet with {len(wars)} wars starting at row {data_start_row + 1}")
             else:
                 logger.info("No wars data to update")
