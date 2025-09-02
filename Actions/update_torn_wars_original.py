@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Torn Wars Updater - Enhanced Python Script
+Torn Wars Updater - Python Script
 This script fetches Torn war data and updates Google Sheets directly
-Creates a new sheet every week with date labeling and faction statistics
+Creates a new sheet every week with date labeling
 """
 
 import os
@@ -86,6 +86,196 @@ class TornWarsUpdater:
             logger.error(f"Failed to parse JSON response: {e}")
             raise
     
+    def get_weekly_sheet_name(self):
+        """Generate sheet name for the current week"""
+        # Get the current date
+        now = datetime.now(timezone.utc)
+        
+        # Find the most recent Tuesday (or current day if it's Tuesday)
+        days_since_tuesday = (now.weekday() - 1) % 7  # Tuesday is 1 (Monday=0)
+        if days_since_tuesday == 0:  # If today is Tuesday
+            tuesday_date = now
+        else:
+            tuesday_date = now - timedelta(days=days_since_tuesday)
+        
+        # Format the date for the sheet name
+        date_str = tuesday_date.strftime("%Y-%m-%d")
+        sheet_name = f"{SHEET_NAME_PREFIX} - {date_str}"
+        
+        logger.info(f"Generated sheet name: {sheet_name}")
+        return sheet_name
+    
+    def get_or_create_weekly_sheet(self, spreadsheet_id):
+        """Get or create the weekly wars sheet"""
+        try:
+            spreadsheet = self.gc.open_by_key(spreadsheet_id)
+            sheet_name = self.get_weekly_sheet_name()
+            
+            # Try to get existing sheet for this week
+            try:
+                sheet = spreadsheet.worksheet(sheet_name)
+                logger.info(f"Found existing sheet for this week: {sheet_name}")
+            except gspread.WorksheetNotFound:
+                # Create new sheet for this week
+                sheet = spreadsheet.add_worksheet(
+                    title=sheet_name,
+                    rows=1000,
+                    cols=20
+                )
+                logger.info(f"Created new sheet for this week: {sheet_name}")
+                
+                # Set up headers
+                self.setup_headers(sheet)
+                
+                # Add a note about when this sheet was created
+                sheet.update('A1', f'Sheet created on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC')
+                sheet.update('A2', f'Data represents wars as of {sheet_name.split(" - ")[1]}')
+                
+                # Move headers to row 4 (after the notes)
+                self.setup_headers_at_row(sheet, 4)
+            
+            return sheet
+            
+        except Exception as e:
+            logger.error(f"Failed to access spreadsheet: {e}")
+            raise
+    
+    def setup_headers(self, sheet):
+        """Set up the sheet headers and formatting (legacy method)"""
+        self.setup_headers_at_row(sheet, 1)
+    
+    def setup_headers_at_row(self, sheet, row_number):
+        """Set up the sheet headers at a specific row"""
+        headers = [
+            'War ID', 'Status', 'Start Date', 'End Date', 'Duration',
+            'Target Score', 'Faction 1 ID', 'Faction 1 Name', 'Faction 1 Score',
+            'Faction 1 Chain', 'Faction 2 ID', 'Faction 2 Name', 'Faction 2 Score',
+            'Faction 2 Chain', 'Total Score', 'Winner Faction ID', 'Last Updated'
+        ]
+        
+        # Set headers at the specified row
+        sheet.update(f'A{row_number}:Q{row_number}', [headers])
+        
+        # Basic formatting (Google Sheets API has limited formatting options)
+        logger.info(f"Set up sheet headers at row {row_number}")
+    
+    def format_duration(self, start_timestamp, end_timestamp):
+        """Format duration between start and end times"""
+        start_time = start_timestamp * 1000
+        end_time = end_timestamp if end_timestamp else datetime.now().timestamp() * 1000
+        duration = end_time - start_time
+        
+        days = int(duration // (1000 * 60 * 60 * 24))
+        hours = int((duration % (1000 * 60 * 60 * 24)) // (1000 * 60 * 60))
+        minutes = int((duration % (1000 * 60 * 60)) // (1000 * 60))
+        
+        if days > 0:
+            return f"{days}d {hours}h {minutes}m"
+        elif hours > 0:
+            return f"{hours}h {minutes}m"
+        else:
+            return f"{minutes}m"
+    
+    def prepare_wars_data(self, wars_data):
+        """Prepare wars data for the sheet"""
+        wars = []
+        
+        for war_id, war in wars_data.get('rankedwars', {}).items():
+            start_date = datetime.fromtimestamp(war['war']['start'], tz=timezone.utc)
+            end_date = None
+            if war['war'].get('end'):
+                end_date = datetime.fromtimestamp(war['war']['end'], tz=timezone.utc)
+            
+            duration = self.format_duration(war['war']['start'], war['war'].get('end'))
+            
+            # Get faction data
+            faction_ids = list(war['factions'].keys())
+            faction1 = war['factions'][faction_ids[0]]
+            faction2 = war['factions'][faction_ids[1]]
+            
+            faction1_score = faction1.get('score', 0)
+            faction2_score = faction2.get('score', 0)
+            total_score = faction1_score + faction2_score
+            
+            # Determine status
+            status = 'Preparing'
+            if not war['war'].get('end'):
+                status = 'Active'
+            elif war['war']['end'] < datetime.now().timestamp():
+                status = 'Finished'
+            
+            war_row = [
+                war_id,
+                status,
+                start_date.isoformat(),
+                end_date.isoformat() if end_date else '',
+                duration,
+                war['war'].get('target', 0),
+                faction_ids[0],
+                faction1.get('name', 'Unknown'),
+                faction1_score,
+                faction1.get('chain', 0),
+                faction_ids[1],
+                faction2.get('name', 'Unknown'),
+                faction2_score,
+                faction2.get('chain', 0),
+                total_score,
+                war['war'].get('winner', ''),
+                datetime.now(timezone.utc).isoformat()
+            ]
+            
+            wars.append(war_row)
+        
+        # Sort by start date (newest first)
+        wars.sort(key=lambda x: x[2], reverse=True)
+        
+        return wars
+    
+    def update_sheet(self, sheet, wars_data):
+        """Update the sheet with wars data"""
+        try:
+            # Prepare and add new data
+            wars = self.prepare_wars_data(wars_data)
+            
+            if wars:
+                # Calculate how many rows we need
+                # Notes in rows 1-2, empty row 3, headers in row 4, data starts at row 5
+                total_rows_needed = 4 + len(wars)  # 4 rows for notes/headers + data rows
+                
+                # Resize the sheet if needed
+                current_rows = sheet.row_count
+                current_cols = sheet.col_count
+                
+                if current_rows < total_rows_needed:
+                    logger.info(f"Resizing sheet from {current_rows} to {total_rows_needed} rows")
+                    sheet.resize(rows=total_rows_needed, cols=20)
+                
+                if current_cols < 17:  # We need 17 columns (A-Q)
+                    logger.info(f"Resizing sheet from {current_cols} to 17 columns")
+                    sheet.resize(rows=total_rows_needed, cols=17)
+                
+                # Clear existing data but keep the notes and headers
+                # Find where the data starts (after notes and headers)
+                data_start_row = 5  # Notes in rows 1-2, empty row 3, headers in row 4
+                
+                # Clear data rows (starting from row 6, after headers)
+                last_row = sheet.row_count
+                if last_row > data_start_row:
+                    sheet.delete_rows(data_start_row + 1, last_row)
+                    # Resize back to minimum size after clearing
+                    sheet.resize(rows=total_rows_needed, cols=17)
+                
+                # Add data starting after the headers
+                data_range = f'A{data_start_row + 1}:Q{data_start_row + len(wars)}'
+                sheet.update(values=wars, range_name=data_range)
+                logger.info(f"Updated sheet with {len(wars)} wars starting at row {data_start_row + 1}")
+            else:
+                logger.info("No wars data to update")
+                
+        except Exception as e:
+            logger.error(f"Failed to update sheet: {e}")
+            raise
+    
     def fetch_faction_history(self, faction_id):
         """Fetch faction historical data including recent wars"""
         try:
@@ -139,205 +329,6 @@ class TornWarsUpdater:
                 'total_wars': 0,
                 'win_rate': '0%'
             }
-    
-    def get_weekly_sheet_name(self):
-        """Generate sheet name for the current week"""
-        # Get the current date
-        now = datetime.now(timezone.utc)
-        
-        # Find the most recent Tuesday (or current day if it's Tuesday)
-        days_since_tuesday = (now.weekday() - 1) % 7  # Tuesday is 1 (Monday=0)
-        if days_since_tuesday == 0:  # If today is Tuesday
-            tuesday_date = now
-        else:
-            tuesday_date = now - timedelta(days=days_since_tuesday)
-        
-        # Format the date for the sheet name
-        date_str = tuesday_date.strftime("%Y-%m-%d")
-        sheet_name = f"{SHEET_NAME_PREFIX} - {date_str}"
-        
-        logger.info(f"Generated sheet name: {sheet_name}")
-        return sheet_name
-    
-    def get_or_create_weekly_sheet(self, spreadsheet_id):
-        """Get or create the weekly wars sheet"""
-        try:
-            spreadsheet = self.gc.open_by_key(spreadsheet_id)
-            sheet_name = self.get_weekly_sheet_name()
-            
-            # Try to get existing sheet for this week
-            try:
-                sheet = spreadsheet.worksheet(sheet_name)
-                logger.info(f"Found existing sheet for this week: {sheet_name}")
-            except gspread.WorksheetNotFound:
-                # Create new sheet for this week
-                sheet = spreadsheet.add_worksheet(
-                    title=sheet_name,
-                    rows=1000,
-                    cols=22  # Increased for new columns
-                )
-                logger.info(f"Created new sheet for this week: {sheet_name}")
-                
-                # Add a note about when this sheet was created
-                sheet.update(values=[f'Sheet created on {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC'], range_name='A1')
-                sheet.update(values=[f'Data represents wars as of {sheet_name.split(" - ")[1]}'], range_name='A2')
-                
-                # Set up headers at row 4 (after the notes)
-                self.setup_headers_at_row(sheet, 4)
-            
-            return sheet
-            
-        except Exception as e:
-            logger.error(f"Failed to access spreadsheet: {e}")
-            raise
-    
-    def setup_headers(self, sheet):
-        """Set up the sheet headers and formatting (legacy method)"""
-        self.setup_headers_at_row(sheet, 1)
-    
-    def setup_headers_at_row(self, sheet, row_number):
-        """Set up the sheet headers at a specific row"""
-        headers = [
-            'War ID', 'Status', 'Start Date', 'End Date', 'Duration',
-            'Target Score', 'Faction 1 ID', 'Faction 1 Name', 'Faction 1 Score',
-            'Faction 1 Chain', 'Faction 1 Wars Won', 'Faction 1 Wars Lost', 'Faction 1 Win Rate',
-            'Faction 2 ID', 'Faction 2 Name', 'Faction 2 Score', 'Faction 2 Chain',
-            'Faction 2 Wars Won', 'Faction 2 Wars Lost', 'Faction 2 Win Rate',
-            'Total Score', 'Winner Faction ID', 'Last Updated'
-        ]
-        
-        # Set headers at the specified row using the correct syntax
-        sheet.update(values=[headers], range_name=f'A{row_number}:V{row_number}')
-        
-        # Basic formatting (Google Sheets API has limited formatting options)
-        logger.info(f"Set up sheet headers at row {row_number}")
-    
-    def format_duration(self, start_timestamp, end_timestamp):
-        """Format duration between start and end times"""
-        start_time = start_timestamp * 1000
-        end_time = end_timestamp if end_timestamp else datetime.now().timestamp() * 1000
-        duration = end_time - start_time
-        
-        days = int(duration // (1000 * 60 * 60 * 24))
-        hours = int((duration % (1000 * 60 * 60 * 24)) // (1000 * 60 * 60))
-        minutes = int((duration % (1000 * 60 * 60)) // (1000 * 60))
-        
-        if days > 0:
-            return f"{days}d {hours}h {minutes}m"
-        elif hours > 0:
-            return f"{hours}h {minutes}m"
-        else:
-            return f"{minutes}m"
-    
-    def prepare_wars_data(self, wars_data):
-        """Prepare wars data for the sheet"""
-        wars = []
-        
-        for war_id, war in wars_data.get('rankedwars', {}).items():
-            start_date = datetime.fromtimestamp(war['war']['start'], tz=timezone.utc)
-            end_date = None
-            if war['war'].get('end'):
-                end_date = datetime.fromtimestamp(war['war']['end'], tz=timezone.utc)
-            
-            duration = self.format_duration(war['war']['start'], war['war'].get('end'))
-            
-            # Get faction data
-            faction_ids = list(war['factions'].keys())
-            faction1 = war['factions'][faction_ids[0]]
-            faction2 = war['factions'][faction_ids[1]]
-            
-            faction1_score = faction1.get('score', 0)
-            faction2_score = faction2.get('score', 0)
-            total_score = faction1_score + faction2_score
-            
-            # Get faction statistics
-            faction1_stats = self.calculate_faction_stats(faction_ids[0])
-            faction2_stats = self.calculate_faction_stats(faction_ids[1])
-            
-            # Determine status
-            status = 'Preparing'
-            if not war['war'].get('end'):
-                status = 'Active'
-            elif war['war']['end'] < datetime.now().timestamp():
-                status = 'Finished'
-            
-            war_row = [
-                war_id,
-                status,
-                start_date.isoformat(),
-                end_date.isoformat() if end_date else '',
-                duration,
-                war['war'].get('target', 0),
-                faction_ids[0],
-                faction1.get('name', 'Unknown'),
-                faction1_score,
-                faction1.get('chain', 0),
-                faction1_stats['wars_won'],
-                faction1_stats['wars_lost'],
-                faction1_stats['win_rate'],
-                faction_ids[1],
-                faction2.get('name', 'Unknown'),
-                faction2_score,
-                faction2.get('chain', 0),
-                faction2_stats['wars_won'],
-                faction2_stats['wars_lost'],
-                faction2_stats['win_rate'],
-                total_score,
-                war['war'].get('winner', ''),
-                datetime.now(timezone.utc).isoformat()
-            ]
-            
-            wars.append(war_row)
-        
-        # Sort by start date (newest first)
-        wars.sort(key=lambda x: x[2], reverse=True)
-        
-        return wars
-    
-    def update_sheet(self, sheet, wars_data):
-        """Update the sheet with wars data"""
-        try:
-            # Prepare and add new data
-            wars = self.prepare_wars_data(wars_data)
-            
-            if wars:
-                # Calculate how many rows we need
-                # Notes in rows 1-2, empty row 3, headers in row 4, data starts at row 5
-                total_rows_needed = 4 + len(wars)  # 4 rows for notes/headers + data rows
-                
-                # Resize the sheet if needed
-                current_rows = sheet.row_count
-                current_cols = sheet.col_count
-                
-                if current_rows < total_rows_needed:
-                    logger.info(f"Resizing sheet from {current_rows} to {total_rows_needed} rows")
-                    sheet.resize(rows=total_rows_needed, cols=22)  # 22 columns for new structure
-                
-                if current_cols < 22:  # We need 22 columns (A-V)
-                    logger.info(f"Resizing sheet from {current_cols} to 22 columns")
-                    sheet.resize(rows=total_rows_needed, cols=22)
-                
-                # Clear existing data but keep the notes and headers
-                # Find where the data starts (after notes and headers)
-                data_start_row = 5  # Notes in rows 1-2, empty row 3, headers in row 4
-                
-                # Clear data rows (starting from row 6, after headers)
-                last_row = sheet.row_count
-                if last_row > data_start_row:
-                    sheet.delete_rows(data_start_row + 1, last_row)
-                    # Resize back to minimum size after clearing
-                    sheet.resize(rows=total_rows_needed, cols=22)
-                
-                # Add data starting after the headers
-                data_range = f'A{data_start_row + 1}:V{data_start_row + len(wars)}'
-                sheet.update(values=wars, range_name=data_range)
-                logger.info(f"Updated sheet with {len(wars)} wars starting at row {data_start_row + 1}")
-            else:
-                logger.info("No wars data to update")
-                
-        except Exception as e:
-            logger.error(f"Failed to update sheet: {e}")
-            raise
     
     def cleanup_old_sheets(self, spreadsheet_id, keep_weeks=8):
         """Clean up old weekly sheets, keeping only the most recent ones"""
