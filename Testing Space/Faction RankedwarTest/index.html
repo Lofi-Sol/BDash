@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faction Ranked Wars Tracker</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .header {
+            background: white;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+        }
+
+        .api-key-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+        }
+
+        label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--gray-600);
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 0.5rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: white;
+            color: var(--gray-700);
+        }
+
+        button:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        .test-button {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .test-button:hover {
+            background: #2563eb;
+        }
+
+        .clear-button {
+            background: var(--danger-color);
+            color: white;
+            border-color: var(--danger-color);
+        }
+
+        .clear-button:hover {
+            background: #dc2626;
+        }
+
+        .refresh-button {
+            background: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+
+        .refresh-button:hover {
+            background: #059669;
+        }
+
+        .debug-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .debug-content {
+            background: var(--gray-100);
+            border-radius: 4px;
+            padding: 0.75rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .faction-info-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .faction-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .faction-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .faction-id {
+            background: var(--gray-100);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+        }
+
+        .faction-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .faction-stat {
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--gray-50);
+            border-radius: 6px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .faction-stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.25rem;
+        }
+
+        .faction-stat-label {
+            font-size: 0.625rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+        }
+
+        .wars-container {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .war-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .war-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .war-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .war-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.625rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .status-finished {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .status-preparing {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .factions-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .faction {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 6px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+        }
+
+        .faction.winner {
+            background: #dcfce7;
+            border-color: var(--secondary-color);
+        }
+
+        .faction.loser {
+            background: #fef2f2;
+            border-color: var(--danger-color);
+        }
+
+        .faction-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .faction-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .faction-details {
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            line-height: 1.4;
+        }
+
+        .vs-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .war-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .detail-item {
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--gray-50);
+            border-radius: 4px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .detail-label {
+            font-size: 0.625rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .stats-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 6px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray-600);
+            font-size: 0.875rem;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--gray-300);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid var(--danger-color);
+            border-radius: 6px;
+            padding: 1rem;
+            text-align: center;
+            color: var(--danger-color);
+            font-weight: 500;
+        }
+
+        .no-wars-message {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            padding: 2rem;
+            text-align: center;
+            color: var(--gray-600);
+        }
+
+        @media (max-width: 768px) {
+            .factions-container {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .vs-badge {
+                order: -1;
+                margin: 0 auto;
+                width: fit-content;
+            }
+
+            .war-details {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .faction-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚔️ Faction Ranked Wars Tracker</h1>
+            <p class="subtitle">Track faction ranked wars and win/loss statistics</p>
+        </div>
+
+        <div class="api-key-section">
+            <div class="input-group">
+                <label for="apiKey">API Key:</label>
+                <input type="text" id="apiKey" placeholder="Enter your Torn API key to fetch faction data">
+            </div>
+            <div class="input-group">
+                <label for="factionId">Faction ID:</label>
+                <input type="number" id="factionId" placeholder="Enter faction ID to fetch ranked wars and basic info">
+            </div>
+            <div class="button-group">
+                <button class="test-button" onclick="fetchFactionData()">Fetch Faction Data</button>
+                <button class="clear-button" onclick="clearData()">Clear Data</button>
+                <button class="refresh-button" onclick="refreshData()">Refresh</button>
+                <button class="test-button" onclick="testApiKey()">Test API Key</button>
+            </div>
+        </div>
+
+        <div id="debugSection" class="debug-section" style="display: none;">
+            <h3>🔍 Debug Information</h3>
+            <div class="debug-content" id="debugContent"></div>
+        </div>
+
+        <div id="factionInfoSection" class="faction-info-section" style="display: none;">
+            <div class="faction-header">
+                <div class="faction-name" id="factionName">Faction Name</div>
+                <div class="faction-id" id="factionIdDisplay">ID: 0</div>
+            </div>
+            <div class="faction-stats" id="factionStats">
+                <!-- Faction stats will be populated here -->
+            </div>
+        </div>
+
+        <div id="statsSection" class="stats-section" style="display: none;">
+            <h3>📊 War Statistics</h3>
+            <div class="stats-grid" id="statsGrid">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+
+        <div id="loadingSection" class="loading" style="display: none;">
+            Fetching faction data...
+        </div>
+
+        <div id="errorSection" class="error-message" style="display: none;">
+            <!-- Error messages will be displayed here -->
+        </div>
+
+        <div id="warsContainer" class="wars-container">
+            <!-- Ranked wars will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        let factionBasicData = null;
+
+        // Test API key validity
+        async function testApiKey() {
+            const apiKey = document.getElementById('apiKey').value;
+            const factionId = document.getElementById('factionId').value;
+            
+            if (!apiKey) {
+                showError('Please enter an API key first.');
+                return;
+            }
+
+            if (!factionId) {
+                showError('Please enter a faction ID first.');
+                return;
+            }
+
+            showLoading();
+            showDebug('Testing API key validity...');
+
+            try {
+                // Test with faction basic endpoint
+                const url = `https://api.torn.com/faction/${factionId}?selections=basic&key=${apiKey}`;
+                showDebug(`Testing URL: ${url}`);
+
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && !data.error) {
+                    showDebug(`✅ API Key is valid!\nResponse: ${JSON.stringify(data, null, 2)}`);
+                    showError('✅ API Key is valid! You can now fetch faction data.');
+                } else {
+                    showDebug(`❌ API Key error: ${JSON.stringify(data, null, 2)}`);
+                    showError(`❌ API Key Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showDebug(`❌ Network error: ${error.message}`);
+                showError(`❌ Network Error: ${error.message}`);
+            }
+        }
+
+        // Fetch faction data including basic info and ranked wars
+        async function fetchFactionData() {
+            const apiKey = document.getElementById('apiKey').value;
+            const factionId = document.getElementById('factionId').value;
+
+            if (!apiKey) {
+                showError('Please enter an API key to fetch faction data.');
+                return;
+            }
+
+            if (!factionId) {
+                showError('Please enter a faction ID to fetch faction data.');
+                return;
+            }
+
+            showLoading();
+            showDebug('Fetching faction data using Torn API v1...');
+
+            try {
+                // Fetch faction basic data
+                const basicUrl = `https://api.torn.com/faction/${factionId}?selections=basic&key=${apiKey}`;
+                showDebug(`Fetching faction basic data: ${basicUrl}`);
+
+                const basicResponse = await fetch(basicUrl);
+                const basicData = await basicResponse.json();
+
+                if (!basicResponse.ok || basicData.error) {
+                    showError(`Faction Basic Data Error: ${basicResponse.status} - ${JSON.stringify(basicData)}`);
+                    return;
+                }
+
+                factionBasicData = basicData;
+                showDebug(`Faction Basic Data: ${JSON.stringify(basicData, null, 2)}`);
+
+                // Fetch faction ranked wars data
+                const warsUrl = `https://api.torn.com/faction/${factionId}?selections=rankedwars&key=${apiKey}`;
+                showDebug(`Fetching faction ranked wars: ${warsUrl}`);
+
+                const warsResponse = await fetch(warsUrl);
+                const warsData = await warsResponse.json();
+
+                if (!warsResponse.ok || warsData.error) {
+                    showError(`Faction Wars Data Error: ${warsResponse.status} - ${JSON.stringify(warsData)}`);
+                    return;
+                }
+
+                currentData = warsData;
+                showDebug(`Faction Wars Data: ${JSON.stringify(warsData, null, 2)}`);
+
+                // Display all data
+                displayFactionInfo(basicData);
+                displayRankedWars(warsData);
+                calculateStats(warsData);
+                hideDebug();
+
+            } catch (error) {
+                showDebug(`❌ Network error: ${error.message}`);
+                showError(`Network Error: ${error.message}`);
+            }
+        }
+
+        // Display faction basic information
+        function displayFactionInfo(data) {
+            const factionInfoSection = document.getElementById('factionInfoSection');
+            const factionName = document.getElementById('factionName');
+            const factionIdDisplay = document.getElementById('factionIdDisplay');
+            const factionStats = document.getElementById('factionStats');
+
+            if (!data.basic) {
+                factionInfoSection.style.display = 'none';
+                return;
+            }
+
+            const basic = data.basic;
+            const factionId = document.getElementById('factionId').value;
+
+            // Update faction header
+            factionName.textContent = basic.name || 'Unknown Faction';
+            factionIdDisplay.textContent = `ID: ${factionId}`;
+
+            // Calculate faction statistics
+            const members = basic.members || 0;
+            const respect = basic.respect || 0;
+            const age = basic.age || 0;
+            const capacity = basic.capacity || 0;
+
+            factionStats.innerHTML = `
+                <div class="faction-stat">
+                    <div class="faction-stat-number">${members.toLocaleString()}</div>
+                    <div class="faction-stat-label">Members</div>
+                </div>
+                <div class="faction-stat">
+                    <div class="faction-stat-number">${respect.toLocaleString()}</div>
+                    <div class="faction-stat-label">Respect</div>
+                </div>
+                <div class="faction-stat">
+                    <div class="faction-stat-number">${age}</div>
+                    <div class="faction-stat-label">Age (Days)</div>
+                </div>
+                <div class="faction-stat">
+                    <div class="faction-stat-number">${capacity.toLocaleString()}</div>
+                    <div class="faction-stat-label">Capacity</div>
+                </div>
+            `;
+
+            factionInfoSection.style.display = 'block';
+        }
+
+        // Display ranked wars
+        function displayRankedWars(data) {
+            const container = document.getElementById('warsContainer');
+            
+            if (!data.rankedwars || Object.keys(data.rankedwars).length === 0) {
+                container.innerHTML = `
+                    <div class="no-wars-message">
+                        <h3>No Ranked Wars Found</h3>
+                        <p>This faction has not participated in any ranked wars.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const wars = Object.entries(data.rankedwars).map(([warId, war]) => ({ warId, ...war }));
+            wars.sort((a, b) => {
+                // Sort by start time (newest first)
+                return new Date(b.war.start) - new Date(a.war.start);
+            });
+
+            container.innerHTML = wars.map(war => createWarCard(war)).join('');
+        }
+
+        // Create war card
+        function createWarCard(war) {
+            const startDate = new Date(war.war.start * 1000);
+            const endDate = war.war.end ? new Date(war.war.end * 1000) : null;
+            const isActive = !war.war.end;
+            const isFinished = war.war.end && war.war.end < Date.now() / 1000;
+
+            let status = 'preparing';
+            let statusText = 'Preparing';
+            if (isActive) {
+                status = 'active';
+                statusText = 'Active';
+            } else if (isFinished) {
+                status = 'finished';
+                statusText = 'Finished';
+            }
+
+            // Get faction data
+            const factionIds = Object.keys(war.factions);
+            const faction1 = war.factions[factionIds[0]];
+            const faction2 = war.factions[factionIds[1]];
+
+            const faction1Score = faction1.score || 0;
+            const faction2Score = faction2.score || 0;
+
+            let faction1Class = '';
+            let faction2Class = '';
+
+            if (isFinished) {
+                if (faction1Score > faction2Score) {
+                    faction1Class = 'winner';
+                    faction2Class = 'loser';
+                } else if (faction2Score > faction1Score) {
+                    faction2Class = 'winner';
+                    faction1Class = 'loser';
+                }
+            }
+
+            return `
+                <div class="war-card">
+                    <div class="war-header">
+                        <div class="war-title">Ranked War #${war.warId}</div>
+                        <div class="war-status status-${status}">${statusText}</div>
+                    </div>
+                    
+                    <div class="factions-container">
+                        <div class="faction ${faction1Class}">
+                            <div class="faction-name">${faction1.name || 'Unknown Faction'}</div>
+                            <div class="faction-score">${faction1Score.toLocaleString()}</div>
+                            <div class="faction-details">
+                                <div>Faction ID: ${factionIds[0]}</div>
+                                <div>Chain: ${faction1.chain || 0}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="vs-badge">VS</div>
+                        
+                        <div class="faction ${faction2Class}">
+                            <div class="faction-name">${faction2.name || 'Unknown Faction'}</div>
+                            <div class="faction-score">${faction2Score.toLocaleString()}</div>
+                            <div class="faction-details">
+                                <div>Faction ID: ${factionIds[1]}</div>
+                                <div>Chain: ${faction2.chain || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="war-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Start Date</div>
+                            <div class="detail-value">${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString()}</div>
+                        </div>
+                        ${endDate ? `
+                        <div class="detail-item">
+                            <div class="detail-label">End Date</div>
+                            <div class="detail-value">${endDate.toLocaleDateString()} ${endDate.toLocaleTimeString()}</div>
+                        </div>
+                        ` : ''}
+                        <div class="detail-item">
+                            <div class="detail-label">Duration</div>
+                            <div class="detail-value">${formatDuration(war.war.start, war.war.end)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Target Score</div>
+                            <div class="detail-value">${war.war.target.toLocaleString()}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Total Score</div>
+                            <div class="detail-value">${(faction1Score + faction2Score).toLocaleString()}</div>
+                        </div>
+                        ${war.war.winner ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Winner</div>
+                            <div class="detail-value">${war.war.winner === parseInt(factionIds[0]) ? faction1.name : faction2.name}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Calculate and display statistics
+        function calculateStats(data) {
+            const statsSection = document.getElementById('statsSection');
+            const statsGrid = document.getElementById('statsGrid');
+
+            if (!data.rankedwars || Object.keys(data.rankedwars).length === 0) {
+                statsSection.style.display = 'none';
+                return;
+            }
+
+            const wars = Object.values(data.rankedwars);
+            const finishedWars = wars.filter(war => war.war.end);
+            
+            // Count wins and losses for the specific faction
+            const factionId = parseInt(document.getElementById('factionId').value);
+            let wins = 0;
+            let losses = 0;
+            
+            finishedWars.forEach(war => {
+                const factionIds = Object.keys(war.factions);
+                const faction1 = war.factions[factionIds[0]];
+                const faction2 = war.factions[factionIds[1]];
+                
+                if (war.war.winner) {
+                    // Determine which faction won based on winner ID
+                    if (war.war.winner === factionId) {
+                        wins++;
+                    } else {
+                        losses++;
+                    }
+                } else {
+                    // If no winner is specified, determine by score
+                    const faction1Id = parseInt(factionIds[0]);
+                    const faction2Id = parseInt(factionIds[1]);
+                    
+                    if (faction1Id === factionId && faction1.score > faction2.score) {
+                        wins++;
+                    } else if (faction2Id === factionId && faction2.score > faction1.score) {
+                        wins++;
+                    } else if (faction1Id === factionId || faction2Id === factionId) {
+                        losses++;
+                    }
+                }
+            });
+
+            const totalWars = wins + losses;
+            const winRate = totalWars > 0 ? Math.round((wins / totalWars) * 100) : 0;
+
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${wins}</div>
+                    <div class="stat-label">Wins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${losses}</div>
+                    <div class="stat-label">Losses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalWars}</div>
+                    <div class="stat-label">Total Wars</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${winRate}%</div>
+                    <div class="stat-label">Win Rate</div>
+                </div>
+            `;
+
+            statsSection.style.display = 'block';
+        }
+
+        // Format duration
+        function formatDuration(start, end) {
+            const startTime = start * 1000;
+            const endTime = end ? end * 1000 : Date.now();
+            const duration = endTime - startTime;
+
+            const days = Math.floor(duration / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((duration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (days > 0) {
+                return `${days}d ${hours}h ${minutes}m`;
+            } else if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else {
+                return `${minutes}m`;
+            }
+        }
+
+        // Show loading state
+        function showLoading() {
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('errorSection').style.display = 'none';
+            document.getElementById('warsContainer').innerHTML = '';
+            document.getElementById('statsSection').style.display = 'none';
+            document.getElementById('factionInfoSection').style.display = 'none';
+        }
+
+        // Show error message
+        function showError(message) {
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'block';
+            document.getElementById('errorSection').innerHTML = `
+                <h3>❌ Error</h3>
+                <p>${message}</p>
+            `;
+        }
+
+        // Show debug information
+        function showDebug(message) {
+            const debugSection = document.getElementById('debugSection');
+            const debugContent = document.getElementById('debugContent');
+            debugSection.style.display = 'block';
+            debugContent.textContent = message;
+        }
+
+        // Hide debug information
+        function hideDebug() {
+            document.getElementById('debugSection').style.display = 'none';
+        }
+
+        // Clear data
+        function clearData() {
+            document.getElementById('apiKey').value = '';
+            document.getElementById('factionId').value = '';
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'none';
+            document.getElementById('debugSection').style.display = 'none';
+            document.getElementById('warsContainer').innerHTML = '';
+            document.getElementById('statsSection').style.display = 'none';
+            document.getElementById('factionInfoSection').style.display = 'none';
+            currentData = null;
+            factionBasicData = null;
+        }
+
+        // Refresh data
+        function refreshData() {
+            if (currentData) {
+                fetchFactionData();
+            } else {
+                showError('No data to refresh. Please fetch faction data first.');
+            }
+        }
+
+        // Auto-refresh every 5 minutes if data exists
+        setInterval(() => {
+            if (currentData) {
+                fetchFactionData();
+            }
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

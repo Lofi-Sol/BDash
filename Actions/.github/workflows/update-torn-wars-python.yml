@@ -1,0 +1,59 @@
+name: Update Torn Wars in Google Sheets (Python)
+
+on:
+  schedule:
+    # Run every Tuesday at 12:15 PM UTC
+    - cron: '15 12 * * 2'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-wars:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests gspread google-auth
+          
+      - name: Update Torn Wars in Google Sheets
+        env:
+          TORN_API_KEY: ${{ secrets.TORN_API_KEY }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+        run: |
+          echo "Starting Torn Wars update using Python script..."
+          
+          # Check if required secrets are set
+          if [ -z "$TORN_API_KEY" ]; then
+            echo "❌ Error: TORN_API_KEY secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$GOOGLE_CREDENTIALS_JSON" ]; then
+            echo "❌ Error: GOOGLE_CREDENTIALS_JSON secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$SPREADSHEET_ID" ]; then
+            echo "❌ Error: GOOGLE_SPREADSHEET_ID secret is not set"
+            exit 1
+          fi
+          
+          # Run the Python update script
+          python Actions/update_torn_wars.py \
+            --torn-api-key "$TORN_API_KEY" \
+            --spreadsheet-id "$SPREADSHEET_ID"
+          
+      - name: Log completion
+        run: |
+          echo "🎯 Torn Wars update workflow completed at $(date -u)"
+          echo "Next scheduled run: Tuesday at 12:15 PM UTC"

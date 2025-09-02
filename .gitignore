@@ -1,0 +1,27 @@
+# Exclude Auth folder
+Auth/
+
+# Exclude system files
+.DS_Store
+Thumbs.db
+*.log
+
+# Exclude Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Exclude virtual environments
+venv/
+env/
+ENV/
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Exclude temporary files
+*.tmp
+*.temp

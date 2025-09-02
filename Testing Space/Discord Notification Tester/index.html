@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #000;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #000;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: #000;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #333;
+        }
+
+        .btn-success {
+            background: #333;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #555;
+        }
+
+        .btn-warning {
+            background: #666;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #888;
+        }
+
+        .btn-danger {
+            background: #999;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #bbb;
+        }
+
+        .response {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .response.success {
+            background: #f0f0f0;
+            border: 1px solid #000;
+            color: #000;
+        }
+
+        .response.error {
+            background: #f0f0f0;
+            border: 1px solid #000;
+            color: #000;
+        }
+
+        .response.info {
+            background: #f0f0f0;
+            border: 1px solid #000;
+            color: #000;
+        }
+
+        .webhook-info {
+            background: #f0f0f0;
+            border: 1px solid #000;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+
+        .webhook-info h3 {
+            color: #000;
+            margin-bottom: 10px;
+        }
+
+        .webhook-url {
+            background: #fff;
+            border: 1px solid #000;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 Discord Webhook Tester</h1>
+            <p>Test your Discord webhook with different message types</p>
+        </div>
+
+        <div class="content">
+            <div class="webhook-info">
+                <h3>Webhook Information</h3>
+                <div class="webhook-url" id="webhookUrl">https://discord.com/api/webhooks/1411865870493421619/LmKDPQJI20T7Ezrg1NbTlrW06ZabxTvrGXqVQd1yxCZ8obXEZ3MGn5Wb38SGRIJaFOKj</div>
+            </div>
+
+            <div class="form-group">
+                <label for="messageType">Message Type:</label>
+                <select id="messageType">
+                    <option value="simple">Simple Message</option>
+                    <option value="embed">Embed Message</option>
+                    <option value="custom">Custom JSON</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="simpleMessageGroup">
+                <label for="messageContent">Message Content:</label>
+                <textarea id="messageContent" placeholder="Enter your message here...">Hello from Discord Webhook Tester! 🎉</textarea>
+            </div>
+
+            <div class="form-group" id="embedMessageGroup" style="display: none;">
+                <label for="embedTitle">Embed Title:</label>
+                <input type="text" id="embedTitle" placeholder="Enter embed title" value="Test Notification">
+                
+                <label for="embedDescription">Embed Description:</label>
+                <textarea id="embedDescription" placeholder="Enter embed description">This is a test embed message from the Discord Webhook Tester!</textarea>
+                
+                <label for="embedColor">Embed Color (hex):</label>
+                <input type="text" id="embedColor" placeholder="#7289da" value="#7289da">
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="embedTimestamp">
+                    <label for="embedTimestamp">Add timestamp</label>
+                </div>
+            </div>
+
+            <div class="form-group" id="customJsonGroup" style="display: none;">
+                <label for="customJson">Custom JSON Payload:</label>
+                <textarea id="customJson" placeholder='{"content": "Hello World!", "embeds": []}'>{
+  "content": "Custom JSON message!",
+  "embeds": [
+    {
+      "title": "Custom Embed",
+      "description": "This is a custom embed created with JSON",
+      "color": 11413758,
+      "timestamp": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}</textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="sendMessage()">Send Message</button>
+                <button class="btn btn-success" onclick="sendTestMessage()">Send Test</button>
+                <button class="btn btn-warning" onclick="sendEmbedMessage()">Send Embed</button>
+                <button class="btn btn-danger" onclick="clearResponse()">Clear Response</button>
+            </div>
+
+            <div class="response" id="response"></div>
+        </div>
+    </div>
+
+    <script>
+        const webhookUrl = 'https://discord.com/api/webhooks/1411865870493421619/LmKDPQJI20T7Ezrg1NbTlrW06ZabxTvrGXqVQd1yxCZ8obXEZ3MGn5Wb38SGRIJaFOKj';
+
+        // Message type selector
+        document.getElementById('messageType').addEventListener('change', function() {
+            const messageType = this.value;
+            const simpleGroup = document.getElementById('simpleMessageGroup');
+            const embedGroup = document.getElementById('embedMessageGroup');
+            const customGroup = document.getElementById('customJsonGroup');
+
+            simpleGroup.style.display = 'none';
+            embedGroup.style.display = 'none';
+            customGroup.style.display = 'none';
+
+            switch(messageType) {
+                case 'simple':
+                    simpleGroup.style.display = 'block';
+                    break;
+                case 'embed':
+                    embedGroup.style.display = 'block';
+                    break;
+                case 'custom':
+                    customGroup.style.display = 'block';
+                    break;
+            }
+        });
+
+        async function sendWebhook(payload) {
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    showResponse('Message sent successfully! ✅', 'success');
+                } else {
+                    const errorText = await response.text();
+                    showResponse(`Error: ${response.status} - ${errorText}`, 'error');
+                }
+            } catch (error) {
+                showResponse(`Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        function sendMessage() {
+            const messageType = document.getElementById('messageType').value;
+            let payload;
+
+            switch(messageType) {
+                case 'simple':
+                    const content = document.getElementById('messageContent').value;
+                    if (!content.trim()) {
+                        showResponse('Please enter a message!', 'error');
+                        return;
+                    }
+                    payload = { content: content };
+                    break;
+
+                case 'embed':
+                    const title = document.getElementById('embedTitle').value;
+                    const description = document.getElementById('embedDescription').value;
+                    const color = document.getElementById('embedColor').value;
+                    const addTimestamp = document.getElementById('embedTimestamp').checked;
+
+                    if (!title.trim() || !description.trim()) {
+                        showResponse('Please fill in title and description!', 'error');
+                        return;
+                    }
+
+                    const embed = {
+                        title: title,
+                        description: description,
+                        color: parseInt(color.replace('#', ''), 16)
+                    };
+
+                    if (addTimestamp) {
+                        embed.timestamp = new Date().toISOString();
+                    }
+
+                    payload = { embeds: [embed] };
+                    break;
+
+                case 'custom':
+                    try {
+                        const customJson = document.getElementById('customJson').value;
+                        payload = JSON.parse(customJson);
+                    } catch (error) {
+                        showResponse(`Invalid JSON: ${error.message}`, 'error');
+                        return;
+                    }
+                    break;
+            }
+
+            sendWebhook(payload);
+        }
+
+        function sendTestMessage() {
+            const testPayload = {
+                content: '🧪 **Test Message**\nThis is a test message from the Discord Webhook Tester!\n\n✅ Webhook is working correctly!',
+                embeds: [
+                    {
+                        title: 'Test Notification',
+                        description: 'This embed confirms that your webhook is properly configured and working.',
+                        color: 0x43b581,
+                        timestamp: new Date().toISOString(),
+                        footer: {
+                            text: 'Discord Webhook Tester'
+                        }
+                    }
+                ]
+            };
+            sendWebhook(testPayload);
+        }
+
+        function sendEmbedMessage() {
+            const embedPayload = {
+                embeds: [
+                    {
+                        title: '🎉 Success Notification',
+                        description: 'This is a beautiful embed message with custom styling!',
+                        color: 0x7289da,
+                        fields: [
+                            {
+                                name: 'Status',
+                                value: '✅ Online',
+                                inline: true
+                            },
+                            {
+                                name: 'Time',
+                                value: new Date().toLocaleTimeString(),
+                                inline: true
+                            }
+                        ],
+                        timestamp: new Date().toISOString(),
+                        footer: {
+                            text: 'Discord Webhook Tester'
+                        }
+                    }
+                ]
+            };
+            sendWebhook(embedPayload);
+        }
+
+        function showResponse(message, type) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = message;
+            responseDiv.className = `response ${type}`;
+            responseDiv.style.display = 'block';
+        }
+
+        function clearResponse() {
+            const responseDiv = document.getElementById('response');
+            responseDiv.style.display = 'none';
+        }
+
+        // Initialize with simple message
+        document.getElementById('messageType').value = 'simple';
+    </script>
+</body>
+</html>
