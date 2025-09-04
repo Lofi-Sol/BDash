@@ -10,10 +10,17 @@ jobs:
   export-random-wars:
     runs-on: ubuntu-latest
     
+    # Add permissions for the workflow to push to the repository
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+        with:
+          # Use a personal access token for authentication
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -57,8 +64,8 @@ jobs:
           # Commit with timestamp
           git commit -m "Auto-export Random Wars Sample JSON $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || exit 0
           
-          # Push to repository
-          git push
+          # Push to repository using the built-in GITHUB_TOKEN
+          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
           
       - name: Log completion
         run: |
