@@ -1,0 +1,42 @@
+{
+  "data": [
+    {
+      "War ID": "12345",
+      "Status": "Active",
+      "Start Date": "2024-01-15",
+      "Start Time": "14:30:00",
+      "End Date": "",
+      "End Time": "",
+      "Duration": "0m",
+      "Target Score": 1000,
+      "Faction 1 ID": "937",
+      "Faction 1 Name": "Example Faction 1",
+      "Faction 1 Score": 0,
+      "Faction 1 Chain": 0,
+      "Faction 1 Wars Won": 15,
+      "Faction 1 Wars Lost": 5,
+      "Faction 1 Win Rate": "75%",
+      "Faction 2 ID": "9100",
+      "Faction 2 Name": "Example Faction 2",
+      "Faction 2 Score": 0,
+      "Faction 2 Chain": 0,
+      "Faction 2 Wars Won": 12,
+      "Faction 2 Wars Lost": 8,
+      "Faction 2 Win Rate": "60%",
+      "Total Score": 0,
+      "Winner Faction ID": "",
+      "Last Updated Date": "2024-01-15",
+      "Last Updated Time": "14:30:00"
+    }
+  ],
+  "count": 1,
+  "exported_at": "2024-01-15T14:00:00Z",
+  "source": "Random Wars Sample",
+  "status": "success",
+  "metadata": {
+    "total_wars": 1,
+    "export_timestamp": "2024-01-15T14:00:00Z",
+    "sheet_name": "Random Wars Sample",
+    "spreadsheet_id": "your_spreadsheet_id_here"
+  }
+}

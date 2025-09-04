@@ -1,0 +1,66 @@
+name: Export Random Wars Sample to JSON
+
+on:
+  schedule:
+    # Run every Tuesday at 2:00 PM UTC (1 hour after random wars selection at 1:00 PM UTC)
+    - cron: '0 14 * * 2'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  export-random-wars:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests gspread google-auth
+          
+      - name: Export Random Wars Sample to JSON
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+        run: |
+          echo "Starting Random Wars Sample export to JSON..."
+          
+          # Check if required secrets are set
+          if [ -z "$GOOGLE_CREDENTIALS_JSON" ]; then
+            echo "❌ Error: GOOGLE_CREDENTIALS_JSON secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$SPREADSHEET_ID" ]; then
+            echo "❌ Error: GOOGLE_SPREADSHEET_ID secret is not set"
+            exit 1
+          fi
+          
+          # Run the export script
+          python Actions/export_random_wars_sample.py \
+            --spreadsheet-id "$SPREADSHEET_ID"
+          
+      - name: Commit and push JSON file
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add the JSON file
+          git add Data/random_wars_sample.json
+          
+          # Commit with timestamp
+          git commit -m "Auto-export Random Wars Sample JSON $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || exit 0
+          
+          # Push to repository
+          git push
+          
+      - name: Log completion
+        run: |
+          echo "🎯 Random Wars Sample export completed at $(date -u)"
+          echo "Next scheduled run: Every Tuesday at 2:00 PM UTC"
