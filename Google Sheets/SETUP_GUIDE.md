@@ -15,51 +15,7 @@ The system consists of two main approaches:
 - A Google account with access to Google Sheets
 - A GitHub repository (for GitHub Actions)
 
-## Option 1: Google Apps Script + Webhook (Recommended)
 
-### Step 1: Create Google Sheet
-
-1. Go to [Google Sheets](https://sheets.google.com)
-2. Create a new spreadsheet
-3. Note the spreadsheet ID from the URL (the long string between `/d/` and `/edit`)
-
-### Step 2: Set up Google Apps Script
-
-1. In your Google Sheet, go to **Extensions > Apps Script**
-2. Replace the default code with the contents of `torn_wars_updater.gs`
-3. Save the project with a name like "Torn Wars Updater"
-
-### Step 3: Set up the Webhook
-
-1. In the Apps Script editor, add the code from `webhook_endpoint.gs`
-2. Go to **Deploy > New deployment**
-3. Choose **Web app** as the type
-4. Set **Execute as** to **Me**
-5. Set **Who has access** to **Anyone**
-6. Click **Deploy**
-7. Copy the **Web app URL** - this is your webhook URL
-
-### Step 4: Configure Torn API Key
-
-1. In Apps Script, go to **Project Settings**
-2. Under **Script Properties**, click **Add script property**
-3. Set **Property** to `TORN_API_KEY`
-4. Set **Value** to your Torn API key
-5. Click **OK**
-
-### Step 5: Test the Setup
-
-1. In Apps Script, run the `testApiConnection()` function
-2. You should see a success message with the number of wars found
-
-### Step 6: Set up GitHub Actions
-
-1. In your GitHub repository, go to **Settings > Secrets and variables > Actions**
-2. Add a new repository secret:
-   - **Name**: `GOOGLE_SHEETS_WEBHOOK_URL`
-   - **Value**: The webhook URL from Step 3
-3. Copy the workflow file `.github/workflows/update-torn-wars.yml` to your repository
-4. The workflow will automatically run every Tuesday at 12:15 PM UTC
 
 ## Option 2: Python Script + Direct API (Weekly Sheets)
 
