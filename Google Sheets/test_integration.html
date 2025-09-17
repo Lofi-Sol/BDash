@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheets Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9fafb;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.2s ease;
+        }
+        
+        .test-button:hover {
+            background: linear-gradient(135deg, #047857, #059669);
+        }
+        
+        .test-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+        
+        .info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+        }
+        
+        .input-group {
+            margin: 15px 0;
+        }
+        
+        .input-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Google Sheets Integration Test (JSONP)</h1>
+        <p>Use this tool to test your Google Sheets integration using JSONP to bypass CORS restrictions.</p>
+        
+        <div class="input-group">
+            <label for="webAppUrl">Google Apps Script Web App URL:</label>
+            <input type="url" id="webAppUrl" value="https://script.google.com/macros/s/AKfycbw67cnqqFbKBdWUSPHHe6mYMfurP7GO0kemhFPzi-lhOtAFMoEGGOF5Ropcv_XAG1I-HA/exec">
+        </div>
+        
+        <div class="input-group">
+            <label for="playerId">Player ID (for testing):</label>
+            <input type="text" id="playerId" value="3520571">
+        </div>
+        
+        <div class="input-group">
+            <label for="playerName">Player Name (for testing):</label>
+            <input type="text" id="playerName" value="VanillaScoop">
+        </div>
+        
+        <button class="test-button" onclick="testConnection()">🔗 Test Connection</button>
+        <button class="test-button" onclick="testBetSave()">💾 Test Bet Save</button>
+        <button class="test-button" onclick="clearResults()">🗑️ Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function showResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testConnection() {
+            const webAppUrl = document.getElementById('webAppUrl').value;
+            
+            if (!webAppUrl) {
+                showResult('❌ Please enter your Google Apps Script Web App URL', 'error');
+                return;
+            }
+            
+            showResult('🔄 Testing connection to Google Sheets (JSONP)...', 'info');
+            
+            // Use JSONP to avoid CORS
+            const callbackName = 'testConnectionCallback_' + Date.now();
+            
+            // Create callback function
+            window[callbackName] = function(result) {
+                showResult(`✅ Connection successful!\nResponse: ${JSON.stringify(result, null, 2)}`, 'success');
+                // Clean up
+                delete window[callbackName];
+                if (script) script.remove();
+            };
+            
+            // Build JSONP URL
+            const jsonpUrl = webAppUrl + '?callback=' + callbackName;
+            
+            // Create script element
+            const script = document.createElement('script');
+            script.src = jsonpUrl;
+            script.onerror = function() {
+                showResult('❌ JSONP connection failed', 'error');
+                delete window[callbackName];
+                script.remove();
+            };
+            
+            // Add script to page
+            document.head.appendChild(script);
+            
+            // Timeout fallback
+            setTimeout(() => {
+                if (window[callbackName]) {
+                    showResult('❌ Connection timeout', 'error');
+                    delete window[callbackName];
+                    if (script.parentNode) script.remove();
+                }
+            }, 10000);
+        }
+        
+        async function testBetSave() {
+            const webAppUrl = document.getElementById('webAppUrl').value;
+            const playerId = document.getElementById('playerId').value;
+            const playerName = document.getElementById('playerName').value;
+            
+            if (!webAppUrl) {
+                showResult('❌ Please enter your Google Apps Script Web App URL', 'error');
+                return;
+            }
+            
+            showResult('🔄 Testing bet save to Google Sheets (JSONP)...', 'info');
+            
+            // Create test bet data
+            const testBet = {
+                betId: 'TEST' + Date.now(),
+                playerId: playerId,
+                playerName: playerName,
+                warId: '99999',
+                factionId: '11111',
+                factionName: 'Test Faction',
+                xanaxAmount: 1,
+                betAmount: 744983,
+                odds: 2.5,
+                status: 'pending',
+                timestamp: Date.now()
+            };
+            
+            showResult(`📤 Sending test bet data:\n${JSON.stringify(testBet, null, 2)}`, 'info');
+            
+            // Use JSONP to avoid CORS
+            const callbackName = 'testBetSaveCallback_' + Date.now();
+            
+            // Create callback function
+            window[callbackName] = function(result) {
+                showResult(`✅ Bet saved successfully!\nResponse: ${JSON.stringify(result, null, 2)}`, 'success');
+                showResult(`🎉 Check your Google Sheet for the new "Betting Data" tab with the test bet!`, 'success');
+                // Clean up
+                delete window[callbackName];
+                if (script) script.remove();
+            };
+            
+            // Build JSONP URL with bet data
+            const jsonpUrl = webAppUrl + '?callback=' + callbackName + '&data=' + encodeURIComponent(JSON.stringify(testBet));
+            
+            // Create script element
+            const script = document.createElement('script');
+            script.src = jsonpUrl;
+            script.onerror = function() {
+                showResult('❌ JSONP bet save failed', 'error');
+                delete window[callbackName];
+                script.remove();
+            };
+            
+            // Add script to page
+            document.head.appendChild(script);
+            
+            // Timeout fallback
+            setTimeout(() => {
+                if (window[callbackName]) {
+                    showResult('❌ Bet save timeout', 'error');
+                    delete window[callbackName];
+                    if (script.parentNode) script.remove();
+                }
+            }, 15000);
+        }
+        
+        // Auto-fill URL if it's in localStorage
+        window.addEventListener('load', () => {
+            const savedUrl = localStorage.getItem('googleSheetsUrl');
+            if (savedUrl) {
+                document.getElementById('webAppUrl').value = savedUrl;
+            }
+        });
+        
+        // Save URL to localStorage when changed
+        document.getElementById('webAppUrl').addEventListener('change', (e) => {
+            localStorage.setItem('googleSheetsUrl', e.target.value);
+        });
+    </script>
+</body>
+</html>

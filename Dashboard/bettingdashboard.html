@@ -3857,18 +3857,74 @@
         }
 
         function placeBet(marketId) {
-            const market = bettingData.find(m => m.id === marketId);
-            if (!market || !canPlaceBet(market)) return;
+            console.log('🎯 placeBet called with marketId:', marketId, 'type:', typeof marketId);
+            console.log('📊 bettingData:', bettingData);
+            
+            if (!bettingData) {
+                console.error('❌ bettingData is null or undefined');
+                alert('Betting data not loaded yet. Please wait and try again.');
+                return;
+            }
+            
+            // Debug: Show all market IDs in bettingData
+            console.log('🔍 All market IDs in bettingData:', bettingData.map(m => ({ id: m.id, type: typeof m.id, title: m.title })));
+            
+            // Try to find market with flexible ID matching (handles both string and number)
+            let market = bettingData.find(m => m.id == marketId); // Use loose equality for type conversion
+            
+            if (!market) {
+                // Fallback: try explicit type conversion
+                market = bettingData.find(m => String(m.id) === String(marketId));
+            }
+            
+            console.log('🔍 Found market:', market);
+            
+            if (!market) {
+                console.error('❌ Market not found for ID:', marketId);
+                console.error('❌ Available market IDs:', bettingData.map(m => m.id));
+                alert('Market not found. Please refresh the page and try again.');
+                return;
+            }
+            
+            const canBet = canPlaceBet(market);
+            console.log('✅ Can place bet:', canBet);
+            
+            if (!canBet) {
+                console.log('❌ Cannot place bet - market conditions not met');
+                alert('Betting is not available for this war at this time.');
+                return;
+            }
 
             selectedBet = { marketId, market };
+            console.log('🎰 Opening betting modal...');
             openBettingModal();
         }
 
         function openBettingModal() {
+            console.log('🚀 openBettingModal called');
             const modal = document.getElementById('betting-modal');
             const modalBody = document.getElementById('betting-modal-body');
             
-            if (!selectedBet) return;
+            console.log('🔍 Modal element:', modal);
+            console.log('🔍 Modal body element:', modalBody);
+            console.log('🔍 selectedBet:', selectedBet);
+            
+            if (!modal) {
+                console.error('❌ Modal element not found!');
+                alert('Modal element not found. Please refresh the page.');
+                return;
+            }
+            
+            if (!modalBody) {
+                console.error('❌ Modal body element not found!');
+                alert('Modal body element not found. Please refresh the page.');
+                return;
+            }
+            
+            if (!selectedBet) {
+                console.error('❌ No selected bet!');
+                return;
+            }
 
             const { market, marketId } = selectedBet;
             
@@ -3927,26 +3983,56 @@
                 </div>
                 `;
             
+            console.log('🎭 Setting modal display to flex...');
             modal.style.display = 'flex';
+            console.log('✅ Modal display set. Modal visible:', modal.style.display);
             
-            // Add event listeners for real-time calculations
-            document.getElementById('betting-xanax-amount').addEventListener('input', updateBettingCalculations);
-            document.getElementById('betting-faction-select').addEventListener('change', updateBettingCalculations);
+            // Add event listeners for real-time calculations (remove existing first to prevent duplicates)
+            const xanaxInput = document.getElementById('betting-xanax-amount');
+            const factionSelect = document.getElementById('betting-faction-select');
+            
+            // Remove existing event listeners
+            xanaxInput.removeEventListener('input', updateBettingCalculations);
+            factionSelect.removeEventListener('change', updateBettingCalculations);
+            
+            // Add fresh event listeners
+            xanaxInput.addEventListener('input', updateBettingCalculations);
+            factionSelect.addEventListener('change', updateBettingCalculations);
+            
+            console.log('✅ Event listeners added for real-time calculations');
             
             // Initialize calculations
             updateBettingCalculations();
         }
 
         function updateBettingCalculations() {
-            const xanaxAmount = parseInt(document.getElementById('betting-xanax-amount').value) || 1;
+            const xanaxInput = document.getElementById('betting-xanax-amount');
+            const xanaxAmount = parseInt(xanaxInput.value) || 1;
             const factionId = document.getElementById('betting-faction-select').value;
-            const faction = selectedBet.market.options.find(opt => opt.id === factionId);
+            
+            console.log('🔄 updateBettingCalculations called');
+            console.log('   Input value:', xanaxInput.value);
+            console.log('   Parsed amount:', xanaxAmount);
+            console.log('   Faction ID:', factionId);
+            
+            // Validate Xanax amount
+            if (xanaxAmount < 1 || xanaxAmount > MAX_XANAX_PER_PLAYER) {
+                console.warn('⚠️ Invalid Xanax amount:', xanaxAmount, '(valid range: 1-', MAX_XANAX_PER_PLAYER, ')');
+                return;
+            }
+            
+            // Use flexible ID matching to handle string/number type differences
+            let faction = selectedBet.market.options.find(opt => opt.id == factionId); // Loose equality
+            
+            if (!faction) {
+                // Fallback: try explicit type conversion
+                faction = selectedBet.market.options.find(opt => String(opt.id) === String(factionId));
+            }
             
             console.log('\n💰 BETTING CALCULATION DEBUG:');
             console.log('   Selected faction ID:', factionId, '(type:', typeof factionId, ')');
             console.log('   Available factions:', selectedBet.market.options.map(opt => `${opt.id} (${typeof opt.id}): ${opt.name} (${opt.odds})`));
             console.log('   🔍 Faction lookup result:', faction ? 'FOUND' : 'NOT FOUND');
-            console.log('   🔍 Lookup comparison:', selectedBet.market.options.map(opt => `${opt.id} === ${factionId} = ${opt.id === factionId}`));
             console.log('   🔍 SelectedBet market ID:', selectedBet.marketId);
             console.log('   🔍 SelectedBet market options count:', selectedBet.market.options.length);
             
@@ -3965,10 +4051,13 @@
             // Calculate total return using decimal odds
             let totalReturn;
             if (typeof faction.odds === 'number' && faction.odds >= 1) {
-                // Decimal odds calculation - FIXED: Don't round Xanax amount, round final dollar amount
-                totalReturn = Math.round(xanaxAmount * faction.odds * XANAX_PRICE);
-                console.log('   🎲 Decimal odds calculation (FIXED):');
-                console.log('      Direct calculation:', xanaxAmount, 'x', faction.odds, 'x', XANAX_PRICE, '= $', totalReturn);
+                // Decimal odds calculation - Total return includes original stake + winnings
+                const rawReturn = xanaxAmount * faction.odds * XANAX_PRICE;
+                totalReturn = Math.round(rawReturn);
+                console.log('   🎲 Decimal odds calculation:');
+                console.log('      Raw calculation:', xanaxAmount, 'x', faction.odds, 'x', XANAX_PRICE, '= $', rawReturn);
+                console.log('      Rounded return: $', totalReturn);
+                console.log('      This includes original bet + winnings');
             } else if (typeof faction.odds === 'string' && (faction.odds.startsWith('+') || faction.odds.startsWith('-'))) {
                 // American odds calculation (legacy)
                 const oddsValue = parseInt(faction.odds.replace('+', ''));
@@ -3998,12 +4087,29 @@
             console.log('      Bet Value: $', betValue.toLocaleString());
             console.log('      Total Return: $', totalReturn.toLocaleString());
             console.log('      Profit: $', (totalReturn - betValue).toLocaleString());
+            console.log('      Profit Percentage: %', (((totalReturn - betValue) / betValue) * 100).toFixed(2));
+            
+            // Verify calculation step by step
+            console.log('   🔍 Calculation verification:');
+            console.log('      Xanax Amount:', xanaxAmount);
+            console.log('      Odds:', faction.odds);
+            console.log('      XANAX_PRICE:', XANAX_PRICE);
+            console.log('      Step 1 (xanax * odds):', xanaxAmount * faction.odds);
+            console.log('      Step 2 (result * price):', (xanaxAmount * faction.odds * XANAX_PRICE));
+            console.log('      Step 3 (rounded):', Math.round(xanaxAmount * faction.odds * XANAX_PRICE));
         }
 
         function placeBetNow() {
             const xanaxAmount = parseInt(document.getElementById('betting-xanax-amount').value) || 1;
             const factionId = document.getElementById('betting-faction-select').value;
-            const faction = selectedBet.market.options.find(opt => opt.id === factionId);
+            
+            // Use flexible ID matching to handle string/number type differences
+            let faction = selectedBet.market.options.find(opt => opt.id == factionId); // Loose equality
+            
+            if (!faction) {
+                // Fallback: try explicit type conversion
+                faction = selectedBet.market.options.find(opt => String(opt.id) === String(factionId));
+            }
             
             if (!faction || xanaxAmount < 1) {
                 alert('Please enter a valid Xanax amount (minimum 1)');
@@ -4087,7 +4193,14 @@
         function generateBetMessage() {
             const xanaxAmount = parseInt(document.getElementById('betting-xanax-amount').value) || 1;
             const factionId = document.getElementById('betting-faction-select').value;
-            const faction = selectedBet.market.options.find(opt => opt.id === factionId);
+            
+            // Use flexible ID matching to handle string/number type differences
+            let faction = selectedBet.market.options.find(opt => opt.id == factionId); // Loose equality
+            
+            if (!faction) {
+                // Fallback: try explicit type conversion
+                faction = selectedBet.market.options.find(opt => String(opt.id) === String(factionId));
+            }
             
             if (!faction || xanaxAmount < 1) {
                 alert('Please enter a valid Xanax amount (minimum 1)');
@@ -4181,6 +4294,15 @@
             
             console.log('🎯 Generated bet ID:', betId);
             
+            // Get the actual odds from the selected faction
+            let odds = 2.0; // Default fallback
+            if (selectedBet && selectedBet.market && selectedBet.market.options) {
+                const faction = selectedBet.market.options.find(opt => opt.id == factionId);
+                if (faction) {
+                    odds = faction.odds || 2.0;
+                }
+            }
+            
             // Create new bet entry
             const newBet = {
                 id: Date.now(), // Internal tracking ID
@@ -4191,6 +4313,7 @@
                 factionName: factionName,
                 xanaxAmount: xanaxAmount,
                 betAmount: xanaxAmount * XANAX_PRICE,
+                odds: odds, // Include the actual odds
                 timestamp: Date.now(),
                 status: 'pending'
             };
@@ -4213,18 +4336,18 @@
             return { id: newBet.id, betId: newBet.betId }; // Return both IDs
         }
         
-        // Save bet to server API
+        // Save bet to Google Sheets
         async function saveBetToServer(betData) {
             try {
-                // Get the actual odds from the selected faction
-                const factionId = betData.factionId;
-                const faction = selectedBet?.market?.options?.find(opt => opt.id === factionId);
-                const odds = faction?.odds || 2.0;
+                // Use odds from bet data (already calculated correctly)
+                const odds = betData.odds || 2.0;
                 
-                console.log('🎯 Saving bet to server with odds:', odds, 'for faction:', faction?.name);
+                console.log('🎯 Saving bet to Google Sheets with odds:', odds, 'for faction:', betData.factionName);
                 console.log('👤 User data available:', userData);
                 console.log('📝 Player name being sent:', userData?.name || 'Unknown');
                 
+                // Prepare data for Google Sheets
+                const betMessage = `BET:${betData.warId}:${betData.factionId}:${betData.xanaxAmount}:${betData.betId}`;
                 const requestBody = {
                     playerId: betData.playerId,
                     warId: betData.warId,
@@ -4233,20 +4356,125 @@
                     xanaxAmount: betData.xanaxAmount,
                     betAmount: betData.betAmount,
                     betId: betData.betId, // Include the bet ID
+                    betMessage: betMessage, // Include the bet message
                     playerName: userData?.name || 'Unknown', // Include the real player name
                     odds: odds,
                     timestamp: betData.timestamp
                 };
                 
-                console.log('📤 Request body being sent to server:', requestBody);
+                console.log('📤 Request body being sent to Google Sheets:', requestBody);
                 
-                console.log('⚠️ Bet saving disabled - no external connections');
-                console.log('📤 Bet would have been saved:', requestBody);
+                // Send to Google Sheets
+                const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbw67cnqqFbKBdWUSPHHe6mYMfurP7GO0kemhFPzi-lhOtAFMoEGGOF5Ropcv_XAG1I-HA/exec';
+                
+                if (GOOGLE_SHEETS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
+                    console.log('⚠️ Google Sheets URL not configured - bet saved to localStorage only');
+                    console.log('📤 Bet would have been saved to Google Sheets:', requestBody);
+                    console.log('🔧 To enable Google Sheets integration:');
+                    console.log('   1. Set up Google Apps Script (see BETTING_SHEETS_SETUP.md)');
+                    console.log('   2. Deploy as web app and get the URL');
+                    console.log('   3. Replace YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE with your URL');
+                    return;
+                }
+                
+                // Try JSONP approach to bypass CORS
+                try {
+                    // Create a unique callback function name
+                    const callbackName = 'bettingCallback_' + Date.now();
+                    
+                    // Create the callback function
+                    window[callbackName] = function(result) {
+                        console.log('✅ Bet saved to Google Sheets (JSONP):', result);
+                        if (result.success) {
+                            showNotification('✅ Bet sent to bookie', 'success');
+                        }
+                        // Clean up
+                        delete window[callbackName];
+                        if (script) script.remove();
+                    };
+                    
+                    // Build JSONP URL
+                    const jsonpUrl = GOOGLE_SHEETS_URL + '?callback=' + callbackName + '&data=' + encodeURIComponent(JSON.stringify(requestBody));
+                    
+                    // Create script element for JSONP
+                    const script = document.createElement('script');
+                    script.src = jsonpUrl;
+                    script.onerror = function() {
+                        console.error('❌ JSONP request failed');
+                        showNotification('⚠️ Bet saved locally (bookie unavailable)', 'warning');
+                        delete window[callbackName];
+                        script.remove();
+                    };
+                    
+                    // Add script to page
+                    document.head.appendChild(script);
+                    
+                    // Fallback timeout
+                    setTimeout(() => {
+                        if (window[callbackName]) {
+                            console.error('❌ JSONP request timed out');
+                            showNotification('⚠️ Bet saved locally (bookie timeout)', 'warning');
+                            delete window[callbackName];
+                            if (script.parentNode) script.remove();
+                        }
+                    }, 10000);
+                    
+                } catch (jsonpError) {
+                    console.error('❌ JSONP error:', jsonpError);
+                    showNotification('⚠️ Bet saved locally (bookie error)', 'warning');
+                }
+                
             } catch (error) {
-                console.error('❌ Error in bet placement (demo mode):', error);
+                console.error('❌ Error saving bet to Google Sheets:', error);
+                // Fallback: bet is already saved to localStorage
             }
         }
         
+        // Show general notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'success' ? '#059669' : type === 'warning' ? '#f59e0b' : '#3b82f6';
+            
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${bgColor};
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 10000;
+                font-size: 0.9rem;
+                font-weight: 500;
+                max-width: 300px;
+                word-wrap: break-word;
+                opacity: 0;
+                transform: translateX(100%);
+                transition: all 0.3s ease;
+            `;
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 4000);
+        }
+
         // Show bet placed notification
         function showBetPlacedNotification(xanaxAmount, factionName, warTitle) {
             // Create notification element
@@ -4317,20 +4545,61 @@
             document.head.appendChild(slideOutStyle);
         }
 
-        function copyBetMessage() {
-            const messageText = document.getElementById('betting-message-text');
-            messageText.select();
-            document.execCommand('copy');
+        // Consolidated copy bet message function that handles both cases
+        function copyBetMessage(betId) {
+            let message;
             
-            const copyBtn = document.querySelector('.betting-copy-btn');
-            const originalText = copyBtn.textContent;
-            copyBtn.textContent = '✅ Copied!';
-            copyBtn.style.background = '#059669';
-            
-            setTimeout(() => {
-                copyBtn.textContent = originalText;
-                copyBtn.style.background = '#3b82f6';
-            }, 2000);
+            if (betId) {
+                // Case 1: Copy message for a specific bet (from user bets or bet table)
+                const bet = userBetsData?.find(b => b.betId === betId) || allBets?.find(b => b.betId === betId);
+                if (!bet) {
+                    console.error('Bet not found for ID:', betId);
+                    return;
+                }
+                message = generateBetMessageFromData(bet);
+                
+                // Use modern clipboard API with fallback
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(message).then(() => {
+                        showUserNotification('Bet Message Copied', 'Bet message has been copied to clipboard!');
+                    }).catch(err => {
+                        console.error('Failed to copy bet message:', err);
+                        // Fallback: show the message in an alert
+                        alert(`Bet Message:\n${message}\n\nCopy this message manually.`);
+                    });
+                } else {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = message;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showUserNotification('Bet Message Copied', 'Bet message has been copied to clipboard!');
+                }
+            } else {
+                // Case 2: Copy message from betting form textarea
+                const messageText = document.getElementById('betting-message-text');
+                if (!messageText) {
+                    console.error('Betting message textarea not found');
+                    return;
+                }
+                
+                messageText.select();
+                document.execCommand('copy');
+                
+                const copyBtn = document.querySelector('.betting-copy-btn');
+                if (copyBtn) {
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '✅ Copied!';
+                    copyBtn.style.background = '#059669';
+                    
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.background = '#3b82f6';
+                    }, 2000);
+                }
+            }
         }
 
         function copyBookieName() {
@@ -4568,20 +4837,29 @@
 
         // Check if betting is allowed for a war
         function canPlaceBet(market) {
+            console.log('🔍 canPlaceBet check for market:', market.id, 'status:', market.status);
+            
             const now = Math.floor(Date.now() / 1000);
-            const warStartTime = market.startTime;
+            const warStartTime = market.startTime / 1000; // Convert from milliseconds to seconds
             const fiveDaysInSeconds = 5 * 24 * 60 * 60; // 5 days in seconds
+            
+            console.log('⏰ Current time:', now, 'War start time:', warStartTime);
+            console.log('⏰ Time until start:', warStartTime - now, 'seconds');
             
             // Allow betting if:
             // 1. War is active (has started but not finished)
-            // 2. War is upcoming but within 5 days of starting
+            // 2. War is upcoming/preparing but within 5 days of starting
             if (market.status === 'active') {
+                console.log('✅ Betting allowed - war is active');
                 return true;
-            } else if (market.status === 'preparing') {
+            } else if (market.status === 'upcoming' || market.status === 'preparing') {
                 const timeUntilStart = warStartTime - now;
-                return timeUntilStart <= fiveDaysInSeconds && timeUntilStart > 0;
+                const canBet = timeUntilStart <= fiveDaysInSeconds && timeUntilStart > 0;
+                console.log('✅ Betting allowed for upcoming war:', canBet);
+                return canBet;
             }
             
+            console.log('❌ Betting not allowed - status:', market.status);
             return false;
         }
         
@@ -4835,7 +5113,7 @@
                         ${bet.status === 'pending' ? `
                             <div class="user-bet-message">
                                 <strong>Bet Message:</strong><br>
-                                ${generateBetMessage(bet)}
+                                ${generateBetMessageFromData(bet)}
                             </div>
                         ` : ''}
                     </div>
@@ -4913,30 +5191,11 @@
             }
         }
 
-        // Generate bet message for display
-        function generateBetMessage(bet) {
+        // Generate bet message for existing bet data
+        function generateBetMessageFromData(bet) {
             return `BET:${bet.warId}:${bet.factionId}:${bet.xanaxAmount}:${bet.betId}`;
         }
 
-        // Copy bet message to clipboard
-        function copyBetMessage(betId) {
-            const bet = userBetsData.find(b => b.betId === betId);
-            if (!bet) return;
-            
-            const message = generateBetMessage(bet);
-            navigator.clipboard.writeText(message).then(() => {
-                showUserNotification('Message Copied', 'Bet message copied to clipboard!');
-            }).catch(() => {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = message;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                showUserNotification('Message Copied', 'Bet message copied to clipboard!');
-            });
-        }
 
         // Request payout (placeholder function)
         function requestPayout(betId) {
@@ -5279,7 +5538,7 @@
                 const payoutAmount = calculatePayoutAmount(bet);
                 const profit = bet.status === 'won' ? payoutAmount - bet.betAmount : 
                               bet.status === 'lost' ? -bet.betAmount : 0;
-                const betMessage = generateBetMessage(bet);
+                const betMessage = generateBetMessageFromData(bet);
                 
                 return `
                     <tr>
@@ -5340,22 +5599,6 @@
             updateBetTable();
         }
 
-        // Copy bet message to clipboard
-        function copyBetMessage(betId) {
-            const bet = allBets.find(b => b.betId === betId);
-            if (!bet) return;
-            
-            const betMessage = generateBetMessage(bet);
-            
-            // Copy to clipboard
-            navigator.clipboard.writeText(betMessage).then(() => {
-                showUserNotification('Bet Message Copied', 'Bet message has been copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy bet message:', err);
-                // Fallback: show the message in an alert
-                alert(`Bet Message:\n${betMessage}\n\nCopy this message manually.`);
-            });
-        }
 
         // Scroll-based header hiding functionality
         let lastScrollTop = 0;
