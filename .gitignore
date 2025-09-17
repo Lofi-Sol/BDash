@@ -25,3 +25,16 @@ ENV/
 # Exclude temporary files
 *.tmp
 *.temp
+
+# Exclude Netlify files
+.netlify/
+.netlify.toml.bak
+
+# Exclude build artifacts
+dist/
+build/
+
+# Exclude environment files
+.env
+.env.local
+.env.production

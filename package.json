@@ -1,0 +1,32 @@
+{
+  "name": "bdash",
+  "version": "1.0.0",
+  "description": "BDash - Torn City Betting Dashboard",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build step required for static site'",
+    "deploy": "netlify deploy --prod --dir ."
+  },
+  "keywords": [
+    "torn-city",
+    "betting",
+    "dashboard",
+    "faction-wars",
+    "gaming"
+  ],
+  "author": "Lofi-Sol",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lofi-Sol/BDash.git"
+  },
+  "homepage": "https://bdash.netlify.app",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^15.0.0"
+  }
+}

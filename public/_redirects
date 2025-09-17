@@ -1,0 +1,9 @@
+# Netlify redirects for SPA
+# Redirect all routes to index.html for client-side routing
+/*    /Dashboard/bettingdashboard.html   200
+
+# API redirects (if needed)
+/api/*  https://script.google.com/macros/s/AKfycbw67cnqqFbKBdWUSPHHe6mYMfurP7GO0kemhFPzi-lhOtAFMoEGGOF5Ropcv_XAG1I-HA/exec/:splat  200
+
+# Security headers
+/    /Dashboard/bettingdashboard.html   200
