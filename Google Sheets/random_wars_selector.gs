@@ -11,6 +11,190 @@ const TARGET_SHEET_NAME = 'Random Wars Sample';
 const NUM_WARS_TO_SELECT = 10;
 const DURATION_COLUMN_INDEX = 6; // Duration column (0-based index)
 const NOTIFICATION_EMAIL = 'oowol003@gmail.com';
+const XANAX_VALUE = 744983; // Current Xanax market value
+
+/**
+ * Enhanced Odds Engine for Google Apps Script
+ */
+class GoogleSheetsOddsEngine {
+  constructor() {
+    this.config = {
+      houseEdge: 0.06,
+      dollarPerXanax: XANAX_VALUE,
+      
+      // Pre-war weights (no current score data available)
+      weights: {
+        staticPower: 0.40,
+        winRate: 0.30,
+        recentPerformance: 0.20,
+        scoreEfficiency: 0.05,
+        consistency: 0.05
+      },
+      
+      // Rank multipliers based on rank values from API
+      rankMultipliers: {
+        25: 1.60, 24: 1.50, 23: 1.40, 22: 1.30, // Diamond tiers
+        21: 1.20, 20: 1.10, 19: 1.00,           // Platinum tiers
+        18: 0.85, 17: 0.75, 16: 0.65, 15: 0.55, // Gold tiers
+        14: 0.45, 13: 0.35, 12: 0.28, 11: 0.22, // Silver tiers
+        10: 0.18, 9: 0.14, 8: 0.10, 7: 0.07,   // Bronze tiers
+        'default': 0.05
+      }
+    };
+  }
+
+  calculateStaticPower(faction) {
+    const respectScore = (faction.respectValue || 1000000) / 1000000;
+    const rankMultiplier = this.config.rankMultipliers[faction.rankValue] || this.config.rankMultipliers['default'];
+    
+    // Member efficiency calculation
+    let memberEfficiency;
+    const members = faction.membersValue || 50;
+    if (members >= 100) memberEfficiency = 1.0;
+    else if (members >= 90) memberEfficiency = 0.95;
+    else if (members >= 80) memberEfficiency = 0.90;
+    else if (members >= 70) memberEfficiency = 0.85;
+    else if (members >= 50) memberEfficiency = 0.80;
+    else if (members >= 20) memberEfficiency = 0.60;
+    else memberEfficiency = 0.40;
+    
+    return respectScore * rankMultiplier * memberEfficiency;
+  }
+
+  calculatePerformanceMetrics(faction) {
+    // Parse win rate
+    let winRate = 0.5;
+    if (faction.winRate && faction.winRate !== 'N/A') {
+      const winRateStr = faction.winRate.toString().replace('%', '');
+      winRate = parseFloat(winRateStr) / 100;
+    }
+    
+    const winRateScore = Math.max(0.5, Math.min(2.0, winRate * 2));
+    
+    // Calculate confidence based on total wars
+    const totalWars = (faction.warsWon || 0) + (faction.warsLost || 0);
+    let confidence;
+    if (totalWars >= 30) confidence = 95;
+    else if (totalWars >= 20) confidence = 85;
+    else if (totalWars >= 15) confidence = 75;
+    else if (totalWars >= 10) confidence = 65;
+    else if (totalWars >= 5) confidence = 45;
+    else confidence = 25;
+    
+    return {
+      winRateScore,
+      recentPerformanceScore: winRateScore,
+      scoreEfficiencyScore: 1.0,
+      consistencyScore: 1.0,
+      confidence,
+      totalWars,
+      actualWinRate: winRate
+    };
+  }
+
+  calculateComprehensiveRating(faction) {
+    const staticPower = this.calculateStaticPower(faction);
+    const performance = this.calculatePerformanceMetrics(faction);
+    
+    const rating = 
+      (staticPower * this.config.weights.staticPower) +
+      (performance.winRateScore * this.config.weights.winRate) +
+      (performance.recentPerformanceScore * this.config.weights.recentPerformance) +
+      (performance.scoreEfficiencyScore * this.config.weights.scoreEfficiency) +
+      (performance.consistencyScore * this.config.weights.consistency);
+    
+    return {
+      overallRating: rating,
+      confidence: performance.confidence,
+      breakdown: {
+        staticPower,
+        ...performance
+      }
+    };
+  }
+
+  calculateWarOdds(faction1Data, faction2Data) {
+    console.log(`Calculating odds for: ${faction1Data.name} vs ${faction2Data.name}`);
+    
+    const rating1 = this.calculateComprehensiveRating(faction1Data);
+    const rating2 = this.calculateComprehensiveRating(faction2Data);
+    
+    // Calculate win probabilities
+    const totalRating = rating1.overallRating + rating2.overallRating;
+    const trueProb1 = rating1.overallRating / totalRating;
+    const trueProb2 = rating2.overallRating / totalRating;
+    
+    // Add small variance for uncertainty
+    const variance1 = (Math.random() - 0.5) * 0.02; // ±1%
+    const variance2 = -variance1;
+    
+    const adjustedProb1 = Math.max(0.05, Math.min(0.95, trueProb1 + variance1));
+    const adjustedProb2 = 1 - adjustedProb1;
+    
+    // Apply house edge
+    const overround = 1 + this.config.houseEdge;
+    const impliedProb1 = adjustedProb1 * overround / (adjustedProb1 * overround + adjustedProb2 * overround);
+    const impliedProb2 = 1 - impliedProb1;
+    
+    // Convert to decimal odds
+    const odds1 = Math.round((1 / impliedProb1) * 100) / 100;
+    const odds2 = Math.round((1 / impliedProb2) * 100) / 100;
+    
+    // Generate betting examples
+    const examples1 = this.generateBettingExamples(odds1);
+    const examples2 = this.generateBettingExamples(odds2);
+    
+    const overallConfidence = Math.round((rating1.confidence + rating2.confidence) / 2);
+    
+    console.log(`Final odds: ${faction1Data.name} ${odds1} vs ${faction2Data.name} ${odds2}`);
+    
+    return {
+      faction1: {
+        name: faction1Data.name,
+        odds: odds1,
+        impliedProbability: impliedProb1,
+        trueProbability: adjustedProb1,
+        confidence: rating1.confidence,
+        bettingExamples: examples1
+      },
+      faction2: {
+        name: faction2Data.name,
+        odds: odds2,
+        impliedProbability: impliedProb2,
+        trueProbability: adjustedProb2,
+        confidence: rating2.confidence,
+        bettingExamples: examples2
+      },
+      metadata: {
+        overallConfidence,
+        houseEdge: this.config.houseEdge * 100,
+        ratingRatio: rating1.overallRating / rating2.overallRating,
+        timestamp: new Date()
+      }
+    };
+  }
+
+  generateBettingExamples(odds) {
+    const examples = [];
+    const xanaxAmounts = [1, 2, 5];
+    
+    for (const amount of xanaxAmounts) {
+      const betDollars = amount * this.config.dollarPerXanax;
+      const totalReturn = Math.round(betDollars * odds);
+      const profit = totalReturn - betDollars;
+      
+      examples.push({
+        xanaxAmount: amount,
+        betDollars,
+        totalReturn,
+        profit,
+        description: `${amount} Xanax ($${betDollars.toLocaleString()}) → $${totalReturn.toLocaleString()} (+$${profit.toLocaleString()})`
+      });
+    }
+    
+    return examples;
+  }
+}
 
 /**
  * Check if current day is before Tuesday
@@ -203,7 +387,7 @@ function createOrUpdateTargetSheet(spreadsheet) {
     // Clear existing data but keep the sheet
     const lastRow = targetSheet.getLastRow();
     if (lastRow > 1) {
-      targetSheet.getRange(2, 1, lastRow - 1, 20).clear();
+      targetSheet.getRange(2, 1, lastRow - 1, 48).clear();
     }
     console.log(`Cleared existing data from "${TARGET_SHEET_NAME}"`);
   } else {
@@ -219,48 +403,25 @@ function createOrUpdateTargetSheet(spreadsheet) {
 }
 
 /**
- * Set up headers and formatting for the target sheet
+ * Enhanced setup headers with odds columns
  */
 function setupTargetSheetHeaders(sheet) {
-  // Set headers (same as source sheet plus faction statistics and HOF data)
+  // Enhanced headers including odds columns
   const headers = [
-    'War ID',
-    'Status',
-    'Start Date',
-    'Start Time',
-    'End Date',
-    'End Time',
-    'Duration',
-    'Target Score',
-    'Faction 1 ID',
-    'Faction 1 Name',
-    'Faction 1 Score',
-    'Faction 1 Chain',
-    'Faction 1 Wars Won',
-    'Faction 1 Wars Lost',
-    'Faction 1 Win Rate',
-    'Faction 1 Rank Value',
-    'Faction 1 Respect Value',
-    'Faction 1 HOF Chain Value',
-    'Faction 2 ID',
-    'Faction 2 Name',
-    'Faction 2 Score',
-    'Faction 2 Chain',
-    'Faction 2 Wars Won',
-    'Faction 2 Wars Lost',
-    'Faction 2 Win Rate',
-    'Faction 2 Rank Value',
-    'Faction 2 Respect Value',
-    'Faction 2 HOF Chain Value',
-    'Total Score',
-    'Winner Faction ID',
-    'Last Updated Date',
-    'Last Updated Time'
+    // Original 34 columns
+    'War ID', 'Status', 'Start Date', 'Start Time', 'End Date', 'End Time', 'Duration', 'Target Score',
+    'Faction 1 ID', 'Faction 1 Name', 'Faction 1 Score', 'Faction 1 Chain', 'Faction 1 Wars Won', 'Faction 1 Wars Lost', 'Faction 1 Win Rate', 'Faction 1 Rank Value', 'Faction 1 Respect Value', 'Faction 1 HOF Chain Value', 'Faction 1 Members',
+    'Faction 2 ID', 'Faction 2 Name', 'Faction 2 Score', 'Faction 2 Chain', 'Faction 2 Wars Won', 'Faction 2 Wars Lost', 'Faction 2 Win Rate', 'Faction 2 Rank Value', 'Faction 2 Respect Value', 'Faction 2 HOF Chain Value', 'Faction 2 Members',
+    'Total Score', 'Winner Faction ID', 'Last Updated Date', 'Last Updated Time',
+    // New odds columns (starting at column 35)
+    'Faction 1 Odds', 'Faction 1 Implied %', 'Faction 1 True %', 'Faction 1 Confidence', 'Faction 1 Bet Example',
+    'Faction 2 Odds', 'Faction 2 Implied %', 'Faction 2 True %', 'Faction 2 Confidence', 'Faction 2 Bet Example',
+    'Overall Confidence', 'House Edge %', 'Rating Ratio', 'Odds Calculated At'
   ];
   
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   
-  // Format headers with different colors for each group
+  // Format headers with colors
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   headerRange.setFontWeight('bold');
   headerRange.setFontColor('white');
@@ -268,10 +429,11 @@ function setupTargetSheetHeaders(sheet) {
   
   // Define column groups and their colors
   const columnGroups = [
-    { start: 1, end: 8, color: '#1f4e79', name: 'Basic War Data' },      // Dark blue
-    { start: 9, end: 18, color: '#2e7d32', name: 'Faction 1' },         // Dark green
-    { start: 19, end: 27, color: '#d32f2f', name: 'Faction 2' },        // Dark red
-    { start: 28, end: 31, color: '#7b1fa2', name: 'Final Data' }        // Dark purple
+    { start: 1, end: 8, color: '#1f4e79', name: 'Basic War Data' },
+    { start: 9, end: 19, color: '#2e7d32', name: 'Faction 1' },
+    { start: 20, end: 30, color: '#d32f2f', name: 'Faction 2' },
+    { start: 31, end: 34, color: '#7b1fa2', name: 'Final Data' },
+    { start: 35, end: 47, color: '#ff6f00', name: 'Betting Odds' } // Orange for odds
   ];
   
   // Apply colors to each group
@@ -283,71 +445,95 @@ function setupTargetSheetHeaders(sheet) {
     }
   });
   
-  // Freeze header row
   sheet.setFrozenRows(1);
-  
-  // Auto-resize columns
   sheet.autoResizeColumns(1, headers.length);
 }
 
 /**
- * Copy selected wars data to the target sheet with faction statistics
+ * Enhanced copy function with odds calculations
  */
 function copyWarsDataToTarget(targetSheet, selectedWars) {
   if (selectedWars.length === 0) {
     return;
   }
   
-  // Enhance selected wars data with faction statistics and HOF data
+  console.log('Initializing odds engine...');
+  const oddsEngine = new GoogleSheetsOddsEngine();
+  
+  // Process each war and calculate odds
   const enhancedWarsData = selectedWars.map(war => {
-    const faction1Id = war[8]; // Faction 1 ID column
-    const faction2Id = war[12]; // Faction 2 ID column (original structure)
+    const faction1Id = war[8];
+    const faction2Id = war[12];
     
-    // Get faction statistics and HOF data
-    console.log(`Processing war ${war[0]}: Faction 1 ID = ${faction1Id}, Faction 2 ID = ${faction2Id}`);
+    console.log(`Processing war ${war[0]}: ${faction1Id} vs ${faction2Id}`);
+    
+    // Get faction data
     const faction1Stats = getFactionWarStats(faction1Id);
     const faction2Stats = getFactionWarStats(faction2Id);
-    const faction1HOFStats = getFactionHOFStats(faction1Id);
-    const faction2HOFStats = getFactionHOFStats(faction2Id);
-    console.log(`Faction 1 stats:`, faction1Stats);
-    console.log(`Faction 2 stats:`, faction2Stats);
-    console.log(`Faction 1 HOF stats:`, faction1HOFStats);
-    console.log(`Faction 2 HOF stats:`, faction2HOFStats);
+    const faction1BasicStats = getFactionHOFStats(faction1Id);
+    const faction2BasicStats = getFactionHOFStats(faction2Id);
     
-    // Create enhanced row with faction statistics and HOF data
+    // Prepare faction data for odds calculation
+    const faction1Data = {
+      name: war[9],
+      respectValue: faction1BasicStats.respectValue,
+      rankValue: faction1BasicStats.rankValue,
+      membersValue: faction1BasicStats.membersValue,
+      warsWon: faction1Stats.warsWon,
+      warsLost: faction1Stats.warsLost,
+      winRate: faction1Stats.winRate
+    };
+    
+    const faction2Data = {
+      name: war[13],
+      respectValue: faction2BasicStats.respectValue,
+      rankValue: faction2BasicStats.rankValue,
+      membersValue: faction2BasicStats.membersValue,
+      warsWon: faction2Stats.warsWon,
+      warsLost: faction2Stats.warsLost,
+      winRate: faction2Stats.winRate
+    };
+    
+    // Calculate odds
+    let oddsResult;
+    try {
+      oddsResult = oddsEngine.calculateWarOdds(faction1Data, faction2Data);
+    } catch (error) {
+      console.error(`Error calculating odds for war ${war[0]}:`, error);
+      // Fallback odds
+      oddsResult = {
+        faction1: { odds: 2.00, impliedProbability: 0.50, trueProbability: 0.485, confidence: 25, bettingExamples: [] },
+        faction2: { odds: 2.00, impliedProbability: 0.50, trueProbability: 0.515, confidence: 25, bettingExamples: [] },
+        metadata: { overallConfidence: 25, houseEdge: 6.0, ratingRatio: 1.0, timestamp: new Date() }
+      };
+    }
+    
+    // Create enhanced row with odds data
     const enhancedRow = [
-      war[0], // War ID
-      war[1], // Status
-      war[2], // Start Date
-      war[3], // Start Time
-      war[4], // End Date
-      war[5], // End Time
-      war[6], // Duration
-      war[7], // Target Score
-      war[8], // Faction 1 ID
-      war[9], // Faction 1 Name
-      war[10], // Faction 1 Score
-      war[11], // Faction 1 Chain
-      faction1Stats.warsWon, // Faction 1 Wars Won
-      faction1Stats.warsLost, // Faction 1 Wars Lost
-      faction1Stats.winRate, // Faction 1 Win Rate
-      faction1HOFStats.rankValue, // Faction 1 Rank Value
-      faction1HOFStats.respectValue, // Faction 1 Respect Value
-      faction1HOFStats.hofChainValue, // Faction 1 HOF Chain Value
-      war[12], // Faction 2 ID
-      war[13], // Faction 2 Name
-      war[14], // Faction 2 Score
-      war[15], // Faction 2 Chain
-      faction2Stats.warsWon, // Faction 2 Wars Won
-      faction2Stats.warsLost, // Faction 2 Wars Lost
-      faction2Stats.winRate, // Faction 2 Win Rate
-      faction2HOFStats.rankValue, // Faction 2 Rank Value
-      faction2HOFStats.respectValue, // Faction 2 Respect Value
-      faction2HOFStats.hofChainValue, // Faction 2 HOF Chain Value
-      war[16], // Total Score
-      war[17], // Winner Faction ID
-      war[18], // Last Updated Date
-      war[19]  // Last Updated Time
+      // Original 34 columns
+      war[0], war[1], war[2], war[3], war[4], war[5], war[6], war[7],
+      war[8], war[9], war[10], war[11], 
+      faction1Stats.warsWon, faction1Stats.warsLost, faction1Stats.winRate,
+      faction1BasicStats.rankValue, faction1BasicStats.respectValue, faction1BasicStats.hofChainValue, faction1BasicStats.membersValue,
+      war[12], war[13], war[14], war[15],
+      faction2Stats.warsWon, faction2Stats.warsLost, faction2Stats.winRate,
+      faction2BasicStats.rankValue, faction2BasicStats.respectValue, faction2BasicStats.hofChainValue, faction2BasicStats.membersValue,
+      war[16], war[17], war[18], war[19],
+      // New odds columns (starting at column 35)
+      oddsResult.faction1.odds,
+      Math.round(oddsResult.faction1.impliedProbability * 10000) / 100, // Percentage with 2 decimals
+      Math.round(oddsResult.faction1.trueProbability * 10000) / 100,
+      oddsResult.faction1.confidence,
+      oddsResult.faction1.bettingExamples[0]?.description || 'N/A',
+      oddsResult.faction2.odds,
+      Math.round(oddsResult.faction2.impliedProbability * 10000) / 100,
+      Math.round(oddsResult.faction2.trueProbability * 10000) / 100,
+      oddsResult.faction2.confidence,
+      oddsResult.faction2.bettingExamples[0]?.description || 'N/A',
+      oddsResult.metadata.overallConfidence,
+      oddsResult.metadata.houseEdge,
+      Math.round(oddsResult.metadata.ratingRatio * 100) / 100,
+      oddsResult.metadata.timestamp.toLocaleString()
     ];
     
     return enhancedRow;
@@ -357,31 +543,65 @@ function copyWarsDataToTarget(targetSheet, selectedWars) {
   const range = targetSheet.getRange(2, 1, enhancedWarsData.length, enhancedWarsData[0].length);
   range.setValues(enhancedWarsData);
   
-  // Format date columns (positions updated after removing all position columns)
-  const startDateRange = targetSheet.getRange(2, 3, enhancedWarsData.length, 1);
-  const endDateRange = targetSheet.getRange(2, 5, enhancedWarsData.length, 1);
-  const lastUpdatedDateRange = targetSheet.getRange(2, 30, enhancedWarsData.length, 1);
+  // Format columns
+  formatEnhancedSheet(targetSheet, enhancedWarsData.length);
+  
+  console.log(`Copied ${selectedWars.length} wars with odds calculations to target sheet`);
+}
+
+/**
+ * Format the enhanced sheet with odds data
+ */
+function formatEnhancedSheet(sheet, numRows) {
+  // Format date columns
+  const startDateRange = sheet.getRange(2, 3, numRows, 1);
+  const endDateRange = sheet.getRange(2, 5, numRows, 1);
+  const lastUpdatedDateRange = sheet.getRange(2, 33, numRows, 1);
   
   startDateRange.setNumberFormat('yyyy-mm-dd');
   endDateRange.setNumberFormat('yyyy-mm-dd');
   lastUpdatedDateRange.setNumberFormat('yyyy-mm-dd');
   
-  // Format time columns (positions updated after removing all position columns)
-  const startTimeRange = targetSheet.getRange(2, 4, enhancedWarsData.length, 1);
-  const endTimeRange = targetSheet.getRange(2, 6, enhancedWarsData.length, 1);
-  const lastUpdatedTimeRange = targetSheet.getRange(2, 31, enhancedWarsData.length, 1);
+  // Format time columns
+  const startTimeRange = sheet.getRange(2, 4, numRows, 1);
+  const endTimeRange = sheet.getRange(2, 6, numRows, 1);
+  const lastUpdatedTimeRange = sheet.getRange(2, 34, numRows, 1);
   
   startTimeRange.setNumberFormat('@');
   endTimeRange.setNumberFormat('@');
   lastUpdatedTimeRange.setNumberFormat('@');
   
+  // Format odds columns
+  const odds1Range = sheet.getRange(2, 35, numRows, 1);
+  const odds2Range = sheet.getRange(2, 40, numRows, 1);
+  odds1Range.setNumberFormat('0.00');
+  odds2Range.setNumberFormat('0.00');
+  
+  // Format percentage columns
+  const impl1Range = sheet.getRange(2, 36, numRows, 1);
+  const true1Range = sheet.getRange(2, 37, numRows, 1);
+  const impl2Range = sheet.getRange(2, 41, numRows, 1);
+  const true2Range = sheet.getRange(2, 42, numRows, 1);
+  
+  impl1Range.setNumberFormat('0.00"%"');
+  true1Range.setNumberFormat('0.00"%"');
+  impl2Range.setNumberFormat('0.00"%"');
+  true2Range.setNumberFormat('0.00"%"');
+  
+  // Format confidence columns
+  const conf1Range = sheet.getRange(2, 38, numRows, 1);
+  const conf2Range = sheet.getRange(2, 43, numRows, 1);
+  const overallConfRange = sheet.getRange(2, 45, numRows, 1);
+  
+  conf1Range.setNumberFormat('0"%"');
+  conf2Range.setNumberFormat('0"%"');
+  overallConfRange.setNumberFormat('0"%"');
+  
   // Auto-resize columns
-  targetSheet.autoResizeColumns(1, enhancedWarsData[0].length);
+  sheet.autoResizeColumns(1, 48);
   
-  // Add hyperlinks to faction names
-  addFactionHyperlinksToTarget(targetSheet, enhancedWarsData.length);
-  
-  console.log(`Copied ${selectedWars.length} wars to target sheet`);
+  // Add hyperlinks
+  addFactionHyperlinksToTarget(sheet, numRows);
 }
 
 /**
@@ -467,7 +687,7 @@ function quickTest() {
 }
 
 /**
- * Test function to debug HOF data for a specific faction
+ * Test function to debug basic data for a specific faction
  */
 function testFactionHOFData(factionId) {
   if (!factionId) {
@@ -475,39 +695,39 @@ function testFactionHOFData(factionId) {
     return { error: 'No faction ID provided' };
   }
   
-  console.log(`Testing HOF data for faction ID: ${factionId}`);
+  console.log(`Testing basic data for faction ID: ${factionId}`);
   try {
-    const hofStats = getFactionHOFStats(factionId);
-    console.log(`Faction ${factionId} HOF stats:`, hofStats);
-    return hofStats;
+    const basicStats = getFactionHOFStats(factionId);
+    console.log(`Faction ${factionId} basic stats:`, basicStats);
+    return basicStats;
   } catch (error) {
-    console.error(`Error testing HOF data for faction ${factionId}:`, error);
+    console.error(`Error testing basic data for faction ${factionId}:`, error);
     return { error: error.message };
   }
 }
 
 /**
- * Test function to debug HOF data for multiple factions
+ * Test function to debug basic data for multiple factions
  */
 function testMultipleFactionsHOF() {
-  const testFactions = [53263, 937, 9100, 10850, 12249]; // Sample faction IDs including the one from your example
+  const testFactions = [53054, 937, 9100, 10850, 12249]; // Sample faction IDs including the one from your example
   const results = {};
   
   testFactions.forEach(factionId => {
-    console.log(`\n=== Testing HOF Data for Faction ${factionId} ===`);
+    console.log(`\n=== Testing Basic Data for Faction ${factionId} ===`);
     results[factionId] = testFactionHOFData(factionId);
   });
   
-  console.log('\n=== All HOF Results ===');
+  console.log('\n=== All Basic Results ===');
   console.log(JSON.stringify(results, null, 2));
   return results;
 }
 
 /**
- * Quick test function for HOF data
+ * Quick test function for basic data
  */
 function quickTestHOF() {
-  return testFactionHOFData(53263); // Test the faction from your example
+  return testFactionHOFData(53054); // Test the faction from your example
 }
 
 /**
@@ -659,7 +879,7 @@ function fetchFactionData(factionId) {
 }
 
 /**
- * Fetch faction Hall of Fame (HOF) data from Torn API v2
+ * Fetch faction basic data from Torn API v2 (includes rank and respect)
  */
 function fetchFactionHOFData(factionId) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('TORN_API_KEY');
@@ -667,22 +887,22 @@ function fetchFactionHOFData(factionId) {
     throw new Error('Torn API key not found. Please set the TORN_API_KEY script property.');
   }
   
-  const url = `https://api.torn.com/v2/faction/${factionId}/hof?key=${apiKey}`;
+  const url = `https://api.torn.com/v2/faction/${factionId}/basic?key=${apiKey}`;
   
-  console.log(`Fetching faction HOF data from: ${url}`);
+  console.log(`Fetching faction basic data from: ${url}`);
   
   try {
     const response = UrlFetchApp.fetch(url);
     const responseCode = response.getResponseCode();
     
-    console.log(`HOF API response code: ${responseCode}`);
+    console.log(`Basic API response code: ${responseCode}`);
     
     if (responseCode !== 200) {
       throw new Error(`Torn API v2 returned response code: ${responseCode}`);
     }
     
     const responseText = response.getContentText();
-    console.log(`Raw HOF API response: ${responseText.substring(0, 500)}...`);
+    console.log(`Raw Basic API response: ${responseText.substring(0, 500)}...`);
     
     const data = JSON.parse(responseText);
     
@@ -690,9 +910,9 @@ function fetchFactionHOFData(factionId) {
       throw new Error(`Torn API v2 error: ${data.error.code} - ${data.error.error}`);
     }
     
-    console.log(`Parsed HOF data keys: ${Object.keys(data)}`);
-    if (data.hof) {
-      console.log(`HOF data:`, JSON.stringify(data.hof, null, 2));
+    console.log(`Parsed Basic data keys: ${Object.keys(data)}`);
+    if (data.basic) {
+      console.log(`Basic data:`, JSON.stringify(data.basic, null, 2));
     }
     
     return data;
@@ -701,46 +921,51 @@ function fetchFactionHOFData(factionId) {
     if (error.message.includes('Torn API v2 error')) {
       throw error;
     }
-    throw new Error(`Failed to fetch faction HOF data from Torn API v2: ${error.message}`);
+    throw new Error(`Failed to fetch faction basic data from Torn API v2: ${error.message}`);
   }
 }
 
 /**
- * Get faction Hall of Fame (HOF) statistics
+ * Get faction basic statistics (rank and respect from basic endpoint)
  */
 function getFactionHOFStats(factionId) {
   try {
-    const factionHOFData = fetchFactionHOFData(factionId);
+    const factionBasicData = fetchFactionHOFData(factionId);
     
-    console.log(`Faction ${factionId} HOF data:`, JSON.stringify(factionHOFData, null, 2));
+    console.log(`Faction ${factionId} basic data:`, JSON.stringify(factionBasicData, null, 2));
     
-    if (!factionHOFData.hof) {
-      console.log(`No HOF data for faction ${factionId}`);
+    if (!factionBasicData.basic) {
+      console.log(`No basic data for faction ${factionId}`);
       return {
         rankValue: 'N/A',
         rankPosition: 'N/A',
         respectValue: 'N/A',
         respectPosition: 'N/A',
         hofChainValue: 'N/A',
-        hofChainPosition: 'N/A'
+        hofChainPosition: 'N/A',
+        membersValue: 'N/A'
       };
     }
     
-    const hof = factionHOFData.hof;
+    const basic = factionBasicData.basic;
+    const rank = basic.rank || {};
     
-    // Extract rank data
-    const rankValue = hof.rank ? hof.rank.value : 'N/A';
-    const rankPosition = hof.rank ? hof.rank.rank : 'N/A';
+    // Extract rank data from the new API response format
+    const rankValue = rank.level || 'N/A';
+    const rankPosition = rank.position || 'N/A';
     
     // Extract respect data
-    const respectValue = hof.respect ? hof.respect.value : 'N/A';
-    const respectPosition = hof.respect ? hof.respect.rank : 'N/A';
+    const respectValue = basic.respect || 'N/A';
+    const respectPosition = 'N/A'; // Position not available in basic endpoint
     
-    // Extract chain data
-    const hofChainValue = hof.chain ? hof.chain.value : 'N/A';
-    const hofChainPosition = hof.chain ? hof.chain.rank : 'N/A';
+    // Extract chain data (best_chain)
+    const hofChainValue = basic.best_chain || 'N/A';
+    const hofChainPosition = 'N/A'; // Position not available in basic endpoint
     
-    console.log(`Faction ${factionId} HOF stats: Rank=${rankValue}(${rankPosition}), Respect=${respectValue}(${respectPosition}), Chain=${hofChainValue}(${hofChainPosition})`);
+    // Extract members count
+    const membersValue = basic.members || 'N/A';
+    
+    console.log(`Faction ${factionId} basic stats: Rank=${rankValue}(${rankPosition}), Respect=${respectValue}, Chain=${hofChainValue}, Members=${membersValue}`);
     
     return {
       rankValue: rankValue,
@@ -748,18 +973,20 @@ function getFactionHOFStats(factionId) {
       respectValue: respectValue,
       respectPosition: respectPosition,
       hofChainValue: hofChainValue,
-      hofChainPosition: hofChainPosition
+      hofChainPosition: hofChainPosition,
+      membersValue: membersValue
     };
     
   } catch (error) {
-    console.error(`Error fetching HOF data for faction ID ${factionId}:`, error);
+    console.error(`Error fetching basic data for faction ID ${factionId}:`, error);
     return {
       rankValue: 'N/A',
       rankPosition: 'N/A',
       respectValue: 'N/A',
       respectPosition: 'N/A',
       hofChainValue: 'N/A',
-      hofChainPosition: 'N/A'
+      hofChainPosition: 'N/A',
+      membersValue: 'N/A'
     };
   }
 }
@@ -897,7 +1124,7 @@ This is an automated error notification from the Random Wars Selector script.
 }
 
 /**
- * Send email notification when the script runs
+ * Enhanced notification email
  */
 function sendNotificationEmail(selectedWarsCount, selectedWarIds) {
   try {
@@ -913,10 +1140,10 @@ function sendNotificationEmail(selectedWarsCount, selectedWarIds) {
       hour12: true
     });
     
-    const subject = `Random Wars Selection Completed - ${selectedWarsCount} Wars Selected`;
+    const subject = `🎰 Random Wars with Professional Odds - ${selectedWarsCount} Wars Selected`;
     
     const body = `
-Random Wars Selection Script has completed successfully!
+Random Wars Selection with Professional Betting Odds completed successfully!
 
 📊 Selection Summary:
 • Total wars selected: ${selectedWarsCount}
@@ -927,28 +1154,39 @@ Random Wars Selection Script has completed successfully!
 🎯 Selected War IDs:
 ${selectedWarIds.map(id => `• War ID: ${id}`).join('\n')}
 
-📋 What happened:
-1. Script filtered for unstarted wars (Duration = "0m")
-2. Randomly selected ${selectedWarsCount} wars from the filtered pool
-3. Fetched historical faction data from Torn API for all selected factions
-4. Fetched Hall of Fame (HOF) data from Torn API v2 for all selected factions
-5. Created/updated "${TARGET_SHEET_NAME}" sheet with enhanced data including:
-   - Original war data
-   - Faction 1 & 2 historical statistics (Wars Won, Wars Lost, Win Rate)
-   - Faction 1 & 2 Hall of Fame data (Rank, Respect, Chain values only)
-   - Color-coded column group headers for easy navigation
-   - Preserved formatting and hyperlinks
+🎰 NEW: Professional Betting Odds Engine Added!
+Each war now includes comprehensive odds calculations:
 
-📈 New Data Columns Added:
-• Faction 1 Wars Won, Wars Lost, Win Rate
-• Faction 1 Rank Value, Respect Value, HOF Chain Value
-• Faction 2 Wars Won, Wars Lost, Win Rate
-• Faction 2 Rank Value, Respect Value, HOF Chain Value
+📈 Faction Analysis:
+• Multi-factor power ratings (respect, rank, members, win rate)
+• Historical performance metrics
+• Confidence scoring based on war experience
+• Advanced statistical modeling
 
-🔗 Access your Google Sheets to view the enhanced results with faction statistics.
+💰 Betting Information:
+• Decimal odds with 6% house edge
+• Implied vs true win probabilities
+• Confidence levels for each prediction
+• Xanax betting examples ($${XANAX_VALUE.toLocaleString()} per Xanax)
+
+📊 New Columns Added:
+• Faction 1 & 2 Odds (decimal format)
+• Implied & True Win Percentages
+• Confidence Scores (reliability indicators)
+• Betting Examples (Xanax conversion)
+• Overall Prediction Confidence
+• House Edge & Rating Ratios
+
+🎯 How to Use:
+1. Higher confidence scores = more reliable predictions
+2. Lower odds = higher probability of winning
+3. Use confidence levels to decide bet sizes
+4. Orange column headers = betting data
+
+🔗 Access your Google Sheets to view the enhanced results with professional betting odds!
 
 ---
-This is an automated notification from the Random Wars Selector script.
+This is an automated notification with enhanced odds calculations.
     `.trim();
     
     MailApp.sendEmail({
@@ -957,11 +1195,10 @@ This is an automated notification from the Random Wars Selector script.
       body: body
     });
     
-    console.log(`Email notification sent to ${NOTIFICATION_EMAIL}`);
+    console.log(`Enhanced notification email sent to ${NOTIFICATION_EMAIL}`);
     
   } catch (error) {
-    console.error('Failed to send email notification:', error);
-    // Don't throw error - email failure shouldn't break the main script
+    console.error('Failed to send enhanced notification email:', error);
   }
 }
 
@@ -1115,10 +1352,10 @@ function updateExistingWarsData() {
     
     // Clear existing data (keep headers)
     if (lastRow > 1) {
-      targetSheet.getRange(2, 1, lastRow - 1, 31).clear();
+      targetSheet.getRange(2, 1, lastRow - 1, 48).clear(); // Clear more columns for odds data
     }
     
-    // Copy updated wars data to target sheet with enhanced faction statistics
+    // Copy updated wars data to target sheet with enhanced faction statistics and odds
     copyWarsDataToTarget(targetSheet, updatedWars);
     
     // Log success
@@ -1193,7 +1430,7 @@ ${notFoundWarIds.map(id => `• War ID: ${id}`).join('\n')}`;
 1. Script kept the same war IDs from the existing selection
 2. Fetched fresh data for these wars from the source sheet
 3. Updated faction historical statistics from Torn API
-4. Updated Hall of Fame (HOF) data from Torn API v2
+4. Updated faction basic data (rank and respect) from Torn API v2
 5. Refreshed all data in "${TARGET_SHEET_NAME}" sheet
 
 🔗 Access your Google Sheets to view the updated results with fresh faction statistics.
@@ -1251,4 +1488,63 @@ function getSourceSheetInfo() {
     totalColumns: lastCol,
     message: `Source sheet has ${dataRows} total wars, ${unstartedWarsCount} unstarted wars (Duration = "0m") available for selection`
   };
+}
+
+// Test functions for odds calculation and enhanced features
+function testOddsCalculation() {
+  console.log('Testing odds calculation...');
+  const oddsEngine = new GoogleSheetsOddsEngine();
+  
+  // Test with sample faction data
+  const faction1 = {
+    name: "Test Faction 1",
+    respectValue: 5000000,
+    rankValue: 18,
+    membersValue: 85,
+    warsWon: 45,
+    warsLost: 30,
+    winRate: "60%"
+  };
+  
+  const faction2 = {
+    name: "Test Faction 2", 
+    respectValue: 3000000,
+    rankValue: 15,
+    membersValue: 70,
+    warsWon: 20,
+    warsLost: 25,
+    winRate: "44%"
+  };
+  
+  const result = oddsEngine.calculateWarOdds(faction1, faction2);
+  console.log('Test odds result:', JSON.stringify(result, null, 2));
+  
+  return result;
+}
+
+function runEnhancedRandomWarsSelection() {
+  console.log('Starting enhanced random wars selection with odds...');
+  const result = selectRandomWars();
+  console.log('Enhanced random wars selection result:', result);
+  return result;
+}
+
+function deleteRandomWarsSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const targetSheet = spreadsheet.getSheetByName(TARGET_SHEET_NAME);
+  
+  if (targetSheet) {
+    spreadsheet.deleteSheet(targetSheet);
+    console.log(`Deleted sheet: "${TARGET_SHEET_NAME}"`);
+    return {
+      success: true,
+      message: `Deleted sheet: "${TARGET_SHEET_NAME}"`
+    };
+  } else {
+    console.log(`Sheet "${TARGET_SHEET_NAME}" does not exist`);
+    return {
+      success: false,
+      message: `Sheet "${TARGET_SHEET_NAME}" does not exist`
+    };
+  }
 }

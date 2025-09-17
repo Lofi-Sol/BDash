@@ -576,6 +576,19 @@
             gap: 6px;
         }
 
+        .start-datetime {
+            background: #f0f9ff;
+            color: #0369a1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .timer-icon {
             font-size: 0.8rem;
         }
@@ -2701,8 +2714,6 @@
             <!-- Navigation Tabs (Left) -->
             <div class="dashboard-tabs">
                 <button class="dashboard-tab active" data-tab="colosseum">Colosseum</button>
-                <button class="dashboard-tab" data-tab="bettracking">Bet Tracking</button>
-                <button class="dashboard-tab" data-tab="how-betting-works">How Betting Works</button>
             </div>
             
             <!-- User Info Section (Right) -->
@@ -2760,272 +2771,7 @@
 
 
 
-            <div class="tab-content" id="tab-bettracking" style="display:none;">
-                
-                <!-- Compact Stats Grid -->
-                <div class="compact-stats-grid">
-                    <div class="compact-stat-card">
-                        <h4>Total Bets</h4>
-                        <div class="compact-stat-value" id="total-bets">0</div>
-                        <div class="compact-stat-change positive" id="total-bets-change">+0</div>
-                    </div>
-                    <div class="compact-stat-card">
-                        <h4>Volume</h4>
-                        <div class="compact-stat-value" id="total-volume">$0</div>
-                        <div class="compact-stat-change positive" id="volume-change">+$0</div>
-                    </div>
-                    <div class="compact-stat-card">
-                        <h4>Active</h4>
-                        <div class="compact-stat-value" id="active-bets">0</div>
-                        <div class="compact-stat-change neutral" id="active-change">0</div>
-                    </div>
-                    <div class="compact-stat-card">
-                        <h4>Won</h4>
-                        <div class="compact-stat-value" id="won-bets">0</div>
-                        <div class="compact-stat-change positive" id="won-change">+0</div>
-                    </div>
-                    <div class="compact-stat-card">
-                        <h4>Lost</h4>
-                        <div class="compact-stat-value" id="lost-bets">0</div>
-                        <div class="compact-stat-change negative" id="lost-change">+0</div>
-                    </div>
-                    <div class="compact-stat-card">
-                        <h4>Payouts</h4>
-                        <div class="compact-stat-value" id="total-payouts">$0</div>
-                        <div class="compact-stat-change positive" id="payout-change">+$0</div>
-                    </div>
-                    <div class="compact-stat-card">
-                        <h4>Profit</h4>
-                        <div class="compact-stat-value" id="total-profit">$0</div>
-                        <div class="compact-stat-change positive" id="profit-change">+$0</div>
-                    </div>
-                </div>
 
-
-
-                <!-- Bet Filters -->
-                <div class="bet-filters">
-                    <select class="bet-filter-select" id="bet-status-filter">
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="won">Won</option>
-                        <option value="lost">Lost</option>
-                        <option value="paid">Paid</option>
-                    </select>
-                    
-                    <select class="bet-filter-select" id="bet-war-filter">
-                        <option value="">All Wars</option>
-                    </select>
-                    
-                    <button class="bet-control-btn secondary" onclick="clearBetFilters()">Clear Filters</button>
-                </div>
-
-                <!-- Bet Table -->
-                <div class="bet-table-container">
-                    <table class="bet-table">
-                        <thead>
-                            <tr>
-                                <th>Player</th>
-                                <th>War</th>
-                                <th>Faction</th>
-                                <th>Amount</th>
-                                <th>Time</th>
-                                <th>Status</th>
-                                <th>Payout</th>
-                                <th>Profit</th>
-                                <th>Bet Message</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bet-table-body">
-                            <!-- Bet data will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- How Betting Works Tab Content -->
-            <div class="tab-content" id="tab-how-betting-works" style="display:none;">
-                <div class="faq-header">
-                    <h2>📚 How Betting Works</h2>
-                    <p class="faq-subtitle">Everything you need to know about Torn City faction betting</p>
-                </div>
-
-                <div class="faq-container">
-                    <!-- Basic Betting Section -->
-                    <div class="faq-section">
-                        <h3>🎯 Basic Betting Process</h3>
-                        
-                        <div class="faq-item">
-                            <h4>How do I place a bet?</h4>
-                            <div class="faq-content">
-                                <ol>
-                                    <li><strong>Choose a war:</strong> Browse available faction wars in the Colosseum tab</li>
-                                    <li><strong>Select a faction:</strong> Click on the faction you want to bet on</li>
-                                    <li><strong>Enter your bet amount:</strong> Specify how much you want to bet (in Xanax)</li>
-                                    <li><strong>Copy the bet message:</strong> The system generates a unique bet message</li>
-                                    <li><strong>Send Xanax:</strong> Transfer the Xanax to the bookie with the bet message</li>
-                                </ol>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>Why do I bet with Xanax instead of cash?</h4>
-                            <div class="faq-content">
-                                <p>Xanax is used to prevent mugging during the betting process. Each Xanax represents $744,983 in betting value. This ensures your bet amount is secure and can't be stolen during transfer.</p>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>How are payouts handled?</h4>
-                            <div class="faq-content">
-                                <p>All payouts are made in cash, not Xanax. If you win, you'll receive cash equivalent to your winnings. The Xanax you sent is converted to cash value for the payout calculation.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Odds and Calculations Section -->
-                    <div class="faq-section">
-                        <h3>📊 Understanding Odds</h3>
-                        
-                        <div class="faq-item">
-                            <h4>How are odds calculated?</h4>
-                            <div class="faq-content">
-                                <p>Odds are calculated based on faction performance data including:</p>
-                                <ul>
-                                    <li>Chain scores and respect</li>
-                                    <li>Faction rankings and history</li>
-                                    <li>Member count and activity</li>
-                                    <li>Recent war performance</li>
-                                </ul>
-                                <p>A 6% house edge is applied to ensure the bookie can cover payouts.</p>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>What do decimal odds mean?</h4>
-                            <div class="faq-content">
-                                <p>Decimal odds show your total return if you win. For example:</p>
-                                <ul>
-                                    <li><strong>2.0 odds:</strong> Bet 1 Xanax → Win 2 Xanax total (1 profit)</li>
-                                    <li><strong>1.5 odds:</strong> Bet 1 Xanax → Win 1.5 Xanax total (0.5 profit)</li>
-                                    <li><strong>3.0 odds:</strong> Bet 1 Xanax → Win 3 Xanax total (2 profit)</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>What is the house edge?</h4>
-                            <div class="faq-content">
-                                <p>The house edge is 6%, which means the bookie keeps 6% of all bets to cover operational costs and ensure profitability. This is built into the odds calculation.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Betting Rules Section -->
-                    <div class="faq-section">
-                        <h3>📋 Betting Rules</h3>
-                        
-                        <div class="faq-item">
-                            <h4>What are the minimum and maximum bet amounts?</h4>
-                            <div class="faq-content">
-                                <p><strong>Minimum bet:</strong> 1 Xanax ($744,983)</p>
-                                <p><strong>Maximum bet:</strong> 100 Xanax ($74,498,300)</p>
-                                <p>These limits help manage risk and ensure fair betting for all participants.</p>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>When do bets close?</h4>
-                            <div class="faq-content">
-                                <p>Bets close when the war starts. Once a war begins, no new bets can be placed on that war. Make sure to place your bets before the war begins!</p>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>Can I cancel or modify my bet?</h4>
-                            <div class="faq-content">
-                                <p>No, once a bet is confirmed, it cannot be cancelled or modified. Make sure you're confident in your selection before placing the bet.</p>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>What happens if a war is cancelled?</h4>
-                            <div class="faq-content">
-                                <p>If a war is cancelled before it starts, all bets are refunded in full. If a war is cancelled after it starts, the bookie will make a fair determination based on the circumstances.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Technical Section -->
-                    <div class="faq-section">
-                        <h3>🔧 Technical Information</h3>
-                        
-                        <div class="faq-item">
-                            <h4>How do I track my bets?</h4>
-                            <div class="faq-content">
-                                <p>Use the "Bet Tracking" tab to view all your current and past bets. You can see:</p>
-                                <ul>
-                                    <li>Active bets and their status</li>
-                                    <li>Bet history and results</li>
-                                    <li>Total winnings and losses</li>
-                                    <li>Performance statistics</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>How often is data updated?</h4>
-                            <div class="faq-content">
-                                <p>War data and odds are updated automatically every 5 minutes. Your bet tracking data is updated in real-time as new information becomes available.</p>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>What if I have technical issues?</h4>
-                            <div class="faq-content">
-                                <p>If you experience any technical issues:</p>
-                                <ol>
-                                    <li>Check your internet connection</li>
-                                    <li>Refresh the page</li>
-                                    <li>Clear your browser cache</li>
-                                    <li>Contact the bookie if the issue persists</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tips Section -->
-                    <div class="faq-section">
-                        <h3>💡 Betting Tips</h3>
-                        
-                        <div class="faq-item">
-                            <h4>How can I improve my betting success?</h4>
-                            <div class="faq-content">
-                                <ul>
-                                    <li><strong>Research factions:</strong> Look at their recent performance and member activity</li>
-                                    <li><strong>Check odds:</strong> Higher odds mean higher risk but potentially higher rewards</li>
-                                    <li><strong>Diversify:</strong> Don't put all your money on one bet</li>
-                                    <li><strong>Set limits:</strong> Only bet what you can afford to lose</li>
-                                    <li><strong>Track performance:</strong> Use the bet tracking feature to analyze your results</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <h4>What should I avoid?</h4>
-                            <div class="faq-content">
-                                <ul>
-                                    <li><strong>Emotional betting:</strong> Don't bet based on personal feelings about factions</li>
-                                    <li><strong>Chasing losses:</strong> Don't increase bet sizes to recover losses</li>
-                                    <li><strong>Betting without research:</strong> Always check faction data before betting</li>
-                                    <li><strong>Betting more than you can afford:</strong> Set strict betting limits</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -3234,13 +2980,6 @@
                     // Load data when switching to tabs
                     if (targetTab === 'colosseum' && apiKey) {
                         loadBettingInterface();
-                    } else if (targetTab === 'bettracking' && apiKey) {
-                        loadUserBets();
-                    } else if (targetTab === 'how-betting-works') {
-                        // Initialize FAQ functionality when tab is shown
-                        setTimeout(() => {
-                            initializeFAQ();
-                        }, 100);
                     }
                 });
             });
@@ -3510,15 +3249,18 @@
             contentEl.style.display = 'none';
 
             try {
-                // Load data from local random_wars_sample.json file
-                console.log('Loading betting data from local JSON file...');
-                const response = await fetch('../Data/random_wars_sample.json');
+                // Load data from GitHub repository
+                console.log('Loading betting data from GitHub repository...');
+                // Add cache-busting parameter to ensure fresh data
+            const cacheBuster = '?v=' + Date.now();
+            const response = await fetch('https://raw.githubusercontent.com/Lofi-Sol/BDash/main/Data/random_wars_sample.json' + cacheBuster);
                 if (!response.ok) {
-                    throw new Error(`Failed to load JSON data: ${response.status}`);
+                    throw new Error(`Failed to load JSON data from GitHub: ${response.status}`);
                 }
                 
                 const jsonData = await response.json();
                 console.log('✅ Loaded JSON data:', jsonData);
+                console.log('📊 Wars in JSON data:', jsonData.data.map(war => war['War ID']));
                 
                 // Transform JSON data into betting format
                 bettingData = transformJsonDataToBetting(jsonData);
@@ -3564,13 +3306,27 @@
                     status = 'finished';
                 }
                 
-                // Calculate countdown time for upcoming wars
+                // Calculate countdown time using actual start dates from JSON
                 let countdownTime = null;
                 if (status === 'upcoming' && war['Start Date'] && war['Start Time']) {
-                    // For demo purposes, create a countdown that's 1-24 hours from now
-                    const now = Date.now();
-                    const randomHours = Math.floor(Math.random() * 24) + 1;
-                    countdownTime = now + (randomHours * 60 * 60 * 1000);
+                    try {
+                        // Parse the actual start date and time from JSON
+                        const startDateStr = war['Start Date']; // Format: "2025-09-19"
+                        const startTimeStr = war['Start Time']; // Format: "13:00"
+                        
+                        // Create a proper Date object from the JSON data
+                        const startDateTime = new Date(startDateStr + 'T' + startTimeStr + ':00');
+                        countdownTime = startDateTime.getTime();
+                        
+                        console.log('War ' + war['War ID'] + ' start time: ' + startDateTime.toLocaleString());
+                    } catch (error) {
+                        console.error('Error parsing start time for war ' + war['War ID'] + ':', error);
+                        // Fallback to current time + 1 hour if parsing fails
+                        countdownTime = Date.now() + (60 * 60 * 1000);
+                    }
+                } else if (!countdownTime) {
+                    // Fallback for wars without specific start times
+                    countdownTime = Date.now() + (60 * 60 * 1000); // 1 hour from now
                 }
                 
                 bettingMarkets.push({
@@ -3589,11 +3345,15 @@
                             name: war['Faction 1 Name'],
                             score: war['Faction 1 Score'],
                             chain: war['Faction 1 Chain'],
-                            respect: null, // Not available in JSON
-                            rank: null, // Not available in JSON
-                            members: null, // Not available in JSON
+                            respect: war['Faction 1 Respect Value'],
+                            rank: war['Faction 1 Rank Value'],
+                            members: war['Faction 1 Members'],
                             position: null, // Not available in JSON
-                            odds: 2.00, // Default odds
+                            odds: war['Faction 1 Odds'] || 2.00, // Use calculated odds
+                            confidence: war['Faction 1 Confidence'] || 'N/A',
+                            impliedPercent: war['Faction 1 Implied %'] || 'N/A',
+                            truePercent: war['Faction 1 True %'] || 'N/A',
+                            betExample: war['Faction 1 Bet Example'] || 'N/A',
                             volume: 0,
                             warsWon: war['Faction 1 Wars Won'],
                             warsLost: war['Faction 1 Wars Lost'],
@@ -3604,11 +3364,15 @@
                             name: war['Faction 2 Name'],
                             score: war['Faction 2 Score'],
                             chain: war['Faction 2 Chain'],
-                            respect: null, // Not available in JSON
-                            rank: null, // Not available in JSON
-                            members: null, // Not available in JSON
+                            respect: war['Faction 2 Respect Value'],
+                            rank: war['Faction 2 Rank Value'],
+                            members: war['Faction 2 Members'],
                             position: null, // Not available in JSON
-                            odds: 2.00, // Default odds
+                            odds: war['Faction 2 Odds'] || 2.00, // Use calculated odds
+                            confidence: war['Faction 2 Confidence'] || 'N/A',
+                            impliedPercent: war['Faction 2 Implied %'] || 'N/A',
+                            truePercent: war['Faction 2 True %'] || 'N/A',
+                            betExample: war['Faction 2 Bet Example'] || 'N/A',
                             volume: 0,
                             warsWon: war['Faction 2 Wars Won'],
                             warsLost: war['Faction 2 Wars Lost'],
@@ -3881,17 +3645,44 @@
             `;
         }
 
+        // Format start date and time
+        function formatStartDateTime(startTime) {
+            if (!startTime) {
+                // If no start time is available, show a placeholder
+                return '📅 Start time TBD';
+            }
+            
+            // startTime is already in milliseconds (JavaScript timestamp)
+            const date = new Date(startTime);
+            
+            // Check if the date is valid
+            if (isNaN(date.getTime())) {
+                return '📅 Start time TBD';
+            }
+            
+            const options = {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZoneName: 'short',
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone // Use visitor's local timezone
+            };
+            
+            return date.toLocaleDateString('en-US', options);
+        }
+
         function createBettingCard(market) {
-            const status = getBettingStatus(market.status);
-            const timerHtml = generateCountdownTimer(market);
+            // Format start date and time
+            const startDateTime = formatStartDateTime(market.startTime);
             
             return `
                 <div class="betting-card" data-market-id="${market.id}">
                     <div class="betting-card-header">
                         <div class="war-id">${market.title}</div>
                         <div class="lead-target">Lead Target: ${market.target.toLocaleString()}</div>
-                        <div class="status-tag ${status.class}">${status.text.toUpperCase()}</div>
-                        ${timerHtml}
+                        <div class="start-datetime">${startDateTime}</div>
                     </div>
                     
                     <div class="betting-card-content">
@@ -3904,7 +3695,6 @@
                                                 ${option.name}
                                             </a>
                                         </div>
-                                        <div class="faction-stats">Score: ${option.score} | Chain: ${option.chain}</div>
                                     </div>
                                     <div class="faction-odds">
                                         <div class="odds-value">${option.odds.toFixed(2)}</div>
@@ -4281,13 +4071,12 @@
                                 2. Go to Torn City and send ${xanaxAmount} Xanax to VanillaScoop [3520571]<br>
                                 3. Paste the bet message in the item transfer message<br>
                                 4. Your bet will be confirmed when the transfer is processed<br>
-                                5. Check the Bet Tracking page to monitor your bet status
+                                5. Your bet will be processed and confirmed automatically
                             </div>
                         </div>
                 
                 <div class="betting-form-actions">
-                    <button class="betting-form-btn betting-form-btn-secondary" onclick="closeBettingModal()">Close</button>
-                    <button class="betting-form-btn betting-form-btn-primary" onclick="openBetTracking()">View Bet Tracking</button>
+                    <button class="betting-form-btn betting-form-btn-primary" onclick="closeBettingModal()">Close</button>
                     </div>
                 `;
 
@@ -4591,7 +4380,7 @@
             if (autoRefreshBettingInterval) {
                 clearInterval(autoRefreshBettingInterval);
             }
-            autoRefreshBettingInterval = setInterval(loadBettingInterface, 120000); // Refresh every 2 minutes
+            autoRefreshBettingInterval = setInterval(loadBettingInterface, 300000); // Refresh every 5 minutes
             isAutoRefreshBettingEnabled = true;
         }
         
@@ -4670,10 +4459,11 @@
         setInterval(updateTimers, 1000); // Update every second
         
         // Start odds updates
-        setInterval(updateOdds, 15000); // Update odds every 15 seconds
+        // setInterval(updateOdds, 15000); // DISABLED - preserves JSON calculated odds
         
         // Update odds in real-time
         async function updateOdds() {
+            // DISABLED - preserves JSON calculated odds from Google Apps Script
             if (!bettingData || !oddsAPI.calculateOdds) return;
             
             // Update odds for all Ranked Wars
@@ -4728,14 +4518,6 @@
             }
         });
         
-        // Open bet tracking dashboard
-        function openBetTracking() {
-            // Switch to bet tracking tab
-            const betTrackingTab = document.querySelector('[data-tab="bettracking"]');
-            if (betTrackingTab) {
-                betTrackingTab.click();
-            }
-        }
         
 
         
@@ -4803,14 +4585,6 @@
             return false;
         }
         
-        // Update openBetTracking to store window reference
-        function openBetTracking() {
-            // Switch to bet tracking tab
-            const betTrackingTab = document.querySelector('[data-tab="bettracking"]');
-            if (betTrackingTab) {
-                betTrackingTab.click();
-            }
-        }
         
 
 
@@ -5616,8 +5390,18 @@
         
         // Set up bet filter event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            // Check for existing API key on page load
-            checkExistingApiKey();
+        // Clear any cached data to ensure fresh data
+        if (typeof bettingCache !== 'undefined') {
+            bettingCache.clear();
+            console.log('🗑️ Cleared all cached data on page load');
+        }
+        
+        // Detect and log user's timezone
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        console.log('🌍 User timezone detected:', userTimezone);
+        
+        // Check for existing API key on page load
+        checkExistingApiKey();
             
             // Add event listeners for bet filters
             const statusFilter = document.getElementById('bet-status-filter');
