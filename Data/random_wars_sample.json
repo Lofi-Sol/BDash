@@ -502,12 +502,12 @@
     }
   ],
   "count": 10,
-  "exported_at": "2026-03-31T14:29:41.064567+00:00",
+  "exported_at": "2026-04-07T14:31:28.805623+00:00",
   "source": "Random Wars Sample",
   "status": "success",
   "metadata": {
     "total_wars": 10,
-    "export_timestamp": "2026-03-31T14:29:41.064578+00:00",
+    "export_timestamp": "2026-04-07T14:31:28.805635+00:00",
     "sheet_name": "Random Wars Sample",
     "spreadsheet_id": "1_pp2DU-znWYe6jpMp29oYicUzPBEQSkhh04_qe6EFbY"
   }
